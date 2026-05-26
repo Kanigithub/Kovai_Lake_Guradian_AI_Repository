@@ -1,0 +1,315 @@
+{% extends "base.html" %}
+{% block title %}Lake Explorer — Kovai Lake Guardians{% endblock %}
+{% block content %}
+
+<!-- Page Header -->
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <div>
+    <h1 class="fw-bold mb-1"><i class="fas fa-globe-asia text-primary me-2"></i>Lake Explorer</h1>
+    <p class="text-muted mb-2">The <strong>Lake Explorer</strong> section helps you easily find and explore lakes across different areas of Coimbatore. Powered by intelligent data mapping, this feature allows users to view lake locations, assess their current condition, and identify areas that need attention.</p>
+    <p class="text-muted mb-2">Browse lakes region-wise, track pollution levels, and discover nearby clean-up initiatives happening in your community. With AI-driven insights and geo-based filtering, you can quickly understand where your efforts can make the biggest impact.</p>
+    <p class="fw-semibold text-primary fst-italic mb-0">Know your lakes. Protect your region. Act together.</p>
+  </div>
+</div>
+
+<!-- Map Card -->
+<div class="card shadow border-0 mb-5">
+  <div class="card-header bg-primary text-white fw-bold d-flex align-items-center gap-2 py-3">
+    <i class="fas fa-map-marked-alt fa-lg"></i>
+    <span>Interactive Lake Map</span>
+    <span class="ms-auto small fw-normal" id="map-breadcrumb">
+      <span class="badge bg-light text-dark">World</span>
+    </span>
+  </div>
+  <div class="card-body p-0 position-relative">
+    <!-- instruction banner -->
+    <div id="map-hint" class="position-absolute top-0 start-50 translate-middle-x mt-2"
+         style="z-index:1000; pointer-events:none;">
+      <span class="badge bg-dark bg-opacity-75 fs-6 px-3 py-2">
+        <i class="fas fa-hand-pointer me-1"></i>
+        <span id="map-hint-text">Hover &amp; click <strong>India</strong> to explore</span>
+      </span>
+    </div>
+    <!-- back button -->
+    <button id="map-back-btn" class="btn btn-sm btn-light position-absolute shadow"
+            style="z-index:1000; bottom:20px; left:20px; display:none;"
+            onclick="resetToWorld()">
+      <i class="fas fa-arrow-left me-1"></i>Back to World
+    </button>
+    <div id="lake-map" style="height:580px; border-radius:0 0 .375rem .375rem;"></div>
+  </div>
+</div>
+
+<!-- Lakes Quick-Info Cards -->
+<h4 class="fw-bold mb-3"><i class="fas fa-tint text-primary me-2"></i>Lakes in Coimbatore-Tamil Nadu, India</h4>
+<div class="row g-3 mb-4">
+  {% for lake in lakes %}
+  <div class="col-md-4">
+    <div class="card h-100 shadow-sm border-0 border-start border-4
+      {% if lake.pollution_level == 'critical' %}border-danger
+      {% elif lake.pollution_level == 'high' %}border-warning
+      {% elif lake.pollution_level == 'medium' %}border-info
+      {% else %}border-success{% endif %}">
+      <div class="card-body">
+        <h5 class="fw-bold mb-1">{{ lake.name }}</h5>
+        <p class="text-muted small mb-2"><i class="fas fa-map-marker-alt me-1 text-danger"></i>{{ lake.location }}</p>
+        <span class="badge
+          {% if lake.pollution_level == 'critical' %}bg-danger
+          {% elif lake.pollution_level == 'high' %}bg-warning text-dark
+          {% elif lake.pollution_level == 'medium' %}bg-info text-dark
+          {% else %}bg-success{% endif %} mb-2">
+          {{ lake.get_pollution_level_display }}
+        </span>
+        <p class="card-text small text-muted">{{ lake.description|truncatechars:100 }}</p>
+      </div>
+      <div class="card-footer bg-transparent border-0 pt-0">
+        <a href="{% url 'lakes_app:lake_detail' lake.pk %}" class="btn btn-sm btn-outline-primary w-100">
+          <i class="fas fa-arrow-right me-1"></i>View Details
+        </a>
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="col-12 text-center py-4 text-muted">No lakes listed yet.</div>
+  {% endfor %}
+</div>
+
+<!-- Leaflet CSS & JS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+(function () {
+
+  /* ── All 8 major Coimbatore lake coordinates ── */
+  const COIMBATORE_LAKES = [
+    { name: 'Valankulam Lake',             lat: 11.0139, lng: 76.9558, pollution: 'Medium',   color: '#1565C0', area: '0.18 km²' },
+    { name: 'Ukkadam Lake (Periya Kulam)', lat: 10.9817, lng: 76.9547, pollution: 'High',     color: '#0D47A1', area: '1.295 km²' },
+    { name: 'Singanallur Lake',            lat: 10.9990, lng: 77.0272, pollution: 'Low',      color: '#1976D2', area: '0.65 km²' },
+    { name: 'Selvampathy Lake',            lat: 11.0050, lng: 76.9610, pollution: 'Medium',   color: '#0288D1', area: '0.30 km²' },
+    { name: 'Narasampathi Lake',           lat: 11.0200, lng: 77.0050, pollution: 'Medium',   color: '#039BE5', area: '0.25 km²' },
+    { name: 'Krishnampathi Lake',          lat: 11.0480, lng: 77.0600, pollution: 'Low',      color: '#0097A7', area: '0.20 km²' },
+    { name: 'Selvachinthamani Lake',       lat: 11.0080, lng: 76.9720, pollution: 'High',     color: '#1A237E', area: '0.15 km²' },
+    { name: 'Kumaraswami Lake',            lat: 11.0310, lng: 76.9820, pollution: 'High',     color: '#283593', area: '0.10 km²' },
+  ];
+
+  /* ── Western Ghats mountain markers near Coimbatore ── */
+  const MOUNTAINS = [
+    { name: 'Nilgiris (Blue Mountains)', lat: 11.4100, lng: 76.6950, height: '2637 m' },
+    { name: 'Anaimalai Hills',           lat: 10.5700, lng: 77.0800, height: '2695 m' },
+    { name: 'Palani Hills',              lat: 10.2300, lng: 77.4800, height: '2524 m' },
+  ];
+
+  /* ── Colour palette ── */
+  const C = {
+    world:      { fill: '#e8f5e9', stroke: '#999', weight: 0.5, opacity: 0.45 },
+    india:      { fill: '#43a047', stroke: '#2e7d32', weight: 2, opacity: 0.70 },
+    indiaHover: { fill: '#1b5e20', stroke: '#1b5e20', weight: 3, opacity: 0.88 },
+    state:      { fill: '#bbdefb', stroke: '#1976d2', weight: 1, opacity: 0.50 },
+    stateHover: { fill: '#64b5f6', stroke: '#0d47a1', weight: 2, opacity: 0.72 },
+    tn:         { fill: '#ff8f00', stroke: '#e65100', weight: 2, opacity: 0.78 },
+    tnHover:    { fill: '#e65100', stroke: '#bf360c', weight: 3, opacity: 0.92 },
+  };
+
+  /* ── Map init — ESRI World Topo (mountains=green, water=blue natively) ── */
+  const map = L.map('lake-map', { zoomControl: true }).setView([20, 78], 4);
+
+  L.tileLayer(
+    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
+    {
+      attribution: 'Tiles &copy; <a href="https://www.esri.com/" target="_blank">Esri</a> | Sources: Esri, HERE, USGS, FAO, NPS, NRCAN, GeoBase, IGN, swisstopo &amp; GIS User Community',
+      maxZoom: 18
+    }
+  ).addTo(map);
+
+  let worldLayer = null, statesLayer = null, lakeMarkers = [], mtnMarkers = [];
+
+  const LAKES_URL  = "{% url 'lakes_app:lake_list' %}";
+  const WORLD_URL  = 'https://cdn.jsdelivr.net/gh/datasets/geo-countries@master/data/countries.geojson';
+  const STATES_URL = 'https://cdn.jsdelivr.net/gh/geohacker/india@master/state/india_state.geojson';
+
+  function fetchJSON(url) {
+    return fetch(url).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
+  }
+  function setHint(html)       { document.getElementById('map-hint-text').innerHTML = html; }
+  function setBreadcrumb(html) { document.getElementById('map-breadcrumb').innerHTML = html; }
+  function showBack(show)      { document.getElementById('map-back-btn').style.display = show ? '' : 'none'; }
+  function clearLakes()        { lakeMarkers.forEach(m => map.removeLayer(m)); lakeMarkers = []; }
+  function clearMountains()    { mtnMarkers.forEach(m => map.removeLayer(m));  mtnMarkers  = []; }
+
+  /* ── Blue circle markers for Coimbatore lakes ── */
+  function addLakeMarkers() {
+    COIMBATORE_LAKES.forEach(lake => {
+      const circle = L.circleMarker([lake.lat, lake.lng], {
+        radius: 14, fillColor: lake.color,
+        color: '#ffffff', weight: 3, opacity: 1, fillOpacity: 0.88
+      }).addTo(map);
+
+      circle.bindTooltip(
+        `<strong style="color:${lake.color}">${lake.name}</strong><br><small>Click for details</small>`,
+        { sticky: true, className: 'leaflet-tooltip-custom' }
+      );
+      circle.bindPopup(
+        `<div class="text-center p-1" style="min-width:185px;">
+          <i class="fas fa-tint fa-2x mb-2 d-block" style="color:${lake.color};"></i>
+          <strong class="d-block mb-1">${lake.name}</strong>
+          <span class="badge bg-warning text-dark small d-block mb-1">Pollution: ${lake.pollution}</span>
+          ${lake.area ? `<span class="text-muted small d-block mb-2">Area: ${lake.area}</span>` : ''}
+          <a href="${LAKES_URL}" class="btn btn-sm btn-primary w-100">
+            <i class="fas fa-arrow-right me-1"></i>View All Lakes
+          </a>
+        </div>`
+      );
+      lakeMarkers.push(circle);
+    });
+  }
+
+  /* ── Green mountain markers for Western Ghats ── */
+  function addMountainMarkers() {
+    const mtnIcon = L.divIcon({
+      html: '<i class="fas fa-mountain" style="color:#2e7d32;font-size:1.5rem;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5));"></i>',
+      className: '', iconSize: [24, 24], iconAnchor: [12, 20]
+    });
+    MOUNTAINS.forEach(mtn => {
+      const m = L.marker([mtn.lat, mtn.lng], { icon: mtnIcon }).addTo(map);
+      m.bindTooltip(
+        `<strong style="color:#1b5e20">${mtn.name}</strong><br><small>Elevation: ${mtn.height}</small>`,
+        { sticky: true, className: 'leaflet-tooltip-custom' }
+      );
+      mtnMarkers.push(m);
+    });
+  }
+
+  /* ── WORLD VIEW ── */
+  function loadWorld() {
+    setBreadcrumb('<span class="badge bg-light text-dark">World</span>');
+    setHint('Hover &amp; click <strong>India</strong> on the map to explore');
+    showBack(false);
+    map.setView([20, 78], 4);
+
+    fetchJSON(WORLD_URL).then(data => {
+      worldLayer = L.geoJSON(data, {
+        style: f => f.properties.ADMIN === 'India'
+          ? { fillColor: C.india.fill,      fillOpacity: C.india.opacity,      color: C.india.stroke,      weight: C.india.weight }
+          : { fillColor: C.world.fill,      fillOpacity: C.world.opacity,      color: C.world.stroke,      weight: C.world.weight },
+        onEachFeature(feature, layer) {
+          if (feature.properties.ADMIN !== 'India') return;
+          layer.bindTooltip(
+            '<div class="fw-bold text-success"><i class="fas fa-map-marker-alt me-1"></i>India</div>' +
+            '<small>Click to explore Indian states</small>',
+            { sticky: true, className: 'leaflet-tooltip-custom' }
+          );
+          layer.on({
+            mouseover(e) {
+              e.target.setStyle({ fillColor: C.indiaHover.fill, fillOpacity: C.indiaHover.opacity, color: C.indiaHover.stroke, weight: C.indiaHover.weight });
+              setHint('Click <strong>India</strong> to see the state-level map');
+            },
+            mouseout(e) {
+              e.target.setStyle({ fillColor: C.india.fill, fillOpacity: C.india.opacity, color: C.india.stroke, weight: C.india.weight });
+              setHint('Hover &amp; click <strong>India</strong> on the map to explore');
+            },
+            click: zoomToIndia
+          });
+        }
+      }).addTo(map);
+    }).catch(() => setHint('<span class="text-warning">⚠ Could not load world map — check internet connection</span>'));
+  }
+
+  /* ── INDIA ZOOM ── */
+  function zoomToIndia() {
+    if (worldLayer) { map.removeLayer(worldLayer); worldLayer = null; }
+    setBreadcrumb(
+      '<span class="badge bg-light text-dark me-1">World</span>' +
+      '<i class="fas fa-chevron-right mx-1 small text-muted"></i>' +
+      '<span class="badge bg-success text-white">India</span>'
+    );
+    setHint('Loading India states&hellip;');
+    showBack(true);
+
+    fetchJSON(STATES_URL).then(data => {
+      map.setView([22.5, 82.5], 5);
+      setHint('Hover &amp; click <strong>Tamil Nadu</strong> to view Coimbatore lakes');
+
+      statesLayer = L.geoJSON(data, {
+        style: f => {
+          const nm = String(f.properties.ST_NM || f.properties.NAME_1 || f.properties.state || '').trim();
+          return nm === 'Tamil Nadu'
+            ? { fillColor: C.tn.fill,    fillOpacity: C.tn.opacity,    color: C.tn.stroke,    weight: C.tn.weight }
+            : { fillColor: C.state.fill, fillOpacity: C.state.opacity, color: C.state.stroke, weight: C.state.weight };
+        },
+        onEachFeature(feature, layer) {
+          const nm   = String(feature.properties.ST_NM || feature.properties.NAME_1 || feature.properties.state || 'Unknown').trim();
+          const isTN = nm === 'Tamil Nadu';
+          layer.bindTooltip(
+            isTN
+              ? '<div class="fw-bold" style="color:#e65100"><i class="fas fa-tint me-1 text-primary"></i>Tamil Nadu</div><small>Click to view Coimbatore lakes</small>'
+              : `<strong>${nm}</strong>`,
+            { sticky: true, className: 'leaflet-tooltip-custom' }
+          );
+          layer.on({
+            mouseover(e) {
+              e.target.setStyle(isTN
+                ? { fillColor: C.tnHover.fill,    fillOpacity: C.tnHover.opacity,    color: C.tnHover.stroke,    weight: C.tnHover.weight }
+                : { fillColor: C.stateHover.fill, fillOpacity: C.stateHover.opacity, color: C.stateHover.stroke, weight: C.stateHover.weight });
+              if (isTN) setHint('Click to zoom into <strong>Coimbatore lakes</strong>');
+            },
+            mouseout(e) { statesLayer.resetStyle(e.target); },
+            click()     { if (isTN) zoomToTamilNadu(layer); }
+          });
+        }
+      }).addTo(map);
+    }).catch(() => setHint('<span class="text-warning">⚠ Could not load India states — check internet connection</span>'));
+  }
+
+  /* ── TAMIL NADU → COIMBATORE LAKES ── */
+  function zoomToTamilNadu(layer) {
+    setBreadcrumb(
+      '<span class="badge bg-light text-dark me-1">World</span>' +
+      '<i class="fas fa-chevron-right mx-1 small text-muted"></i>' +
+      '<span class="badge bg-success text-white me-1">India</span>' +
+      '<i class="fas fa-chevron-right mx-1 small text-muted"></i>' +
+      '<span class="badge bg-warning text-dark me-1">Tamil Nadu</span>' +
+      '<i class="fas fa-chevron-right mx-1 small text-muted"></i>' +
+      '<span class="badge bg-primary text-white">Coimbatore</span>'
+    );
+    setHint('Zooming into <strong>Coimbatore</strong>&hellip;');
+    map.fitBounds(layer.getBounds(), { padding: [30, 30] });
+
+    setTimeout(() => {
+      map.flyTo([11.0168, 76.9558], 13, { duration: 1.8 });
+      setHint(
+        '<i class="fas fa-circle me-1" style="color:#1565C0;"></i>Blue = Lakes &nbsp;|&nbsp;' +
+        '<i class="fas fa-mountain me-1 text-success"></i>Green = Mountains (Western Ghats)'
+      );
+      addLakeMarkers();
+      addMountainMarkers();
+    }, 700);
+  }
+
+  /* ── RESET ── */
+  window.resetToWorld = function () {
+    if (statesLayer) { map.removeLayer(statesLayer); statesLayer = null; }
+    if (worldLayer)  { map.removeLayer(worldLayer);  worldLayer  = null; }
+    map.closePopup();
+    clearLakes();
+    clearMountains();
+    loadWorld();
+  };
+
+  loadWorld();
+})();
+</script>
+
+<style>
+.leaflet-tooltip-custom {
+  background: rgba(255,255,255,.96);
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 7px 12px;
+  box-shadow: 0 3px 10px rgba(0,0,0,.18);
+  font-size: .9rem;
+}
+.leaflet-popup-content-wrapper { border-radius: 12px; }
+</style>
+
+{% endblock %}
