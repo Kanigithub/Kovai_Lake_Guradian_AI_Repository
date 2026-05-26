@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block title %}Import Volunteers — Kovai Lake Guardians{% endblock %}
+{% block content %}
+
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+  <div>
+    <h2 class="fw-bold mb-1"><i class="fas fa-file-excel text-success me-2"></i>Import Volunteers</h2>
+    <p class="text-muted mb-0">Upload a Microsoft Excel (.xlsx) or CSV file exported from Microsoft Forms to bulk-add volunteers.</p>
+  </div>
+  <a href="{% url 'dashboard_app:organizer_dashboard' %}" class="btn btn-outline-secondary btn-sm">
+    <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+  </a>
+</div>
+
+<div class="row g-4">
+  <!-- Upload Card -->
+  <div class="col-lg-6">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-success text-white fw-bold">
+        <i class="fas fa-upload me-2"></i>Upload File
+      </div>
+      <div class="card-body p-4">
+        <form method="post" enctype="multipart/form-data">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Select Excel / CSV File</label>
+            <input type="file" name="excel_file" class="form-control" accept=".xlsx,.xls,.csv" required>
+            <div class="form-text">Supported formats: <strong>.xlsx</strong> (Excel), <strong>.xls</strong>, <strong>.csv</strong></div>
+          </div>
+          <div class="alert alert-info py-2 small mb-3">
+            <i class="fas fa-info-circle me-1"></i>
+            All imported volunteers will receive the default password: <strong>volunteer123</strong>. They can change it after login.
+          </div>
+          <button type="submit" class="btn btn-success w-100 fw-bold">
+            <i class="fas fa-file-import me-2"></i>Import Volunteers
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Download Template -->
+    <div class="card border-0 shadow-sm mt-3">
+      <div class="card-header bg-primary text-white fw-bold">
+        <i class="fas fa-download me-2"></i>Download Template
+      </div>
+      <div class="card-body p-4">
+        <p class="text-muted small mb-3">
+          Download the pre-formatted Excel template to fill in volunteer details. Compatible with
+          <strong>Microsoft Forms</strong> exports — simply match your form column names to the template.
+        </p>
+        <a href="{% url 'dashboard_app:download_volunteer_template' %}" class="btn btn-primary w-100 fw-bold">
+          <i class="fas fa-file-excel me-2"></i>Download Excel Template (.xlsx)
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Instructions Card -->
+  <div class="col-lg-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-warning fw-bold">
+        <i class="fas fa-clipboard-list me-2"></i>How to Use
+      </div>
+      <div class="card-body p-4">
+        <h6 class="fw-bold text-success mb-3"><i class="fas fa-table me-1"></i>Expected Column Names</h6>
+        <div class="table-responsive mb-4">
+          <table class="table table-sm table-bordered mb-0">
+            <thead class="table-success">
+              <tr><th>Column</th><th>Required</th><th>Example</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>First Name</strong></td><td><span class="badge bg-warning text-dark">Yes</span></td><td>Manivannan</td></tr>
+              <tr><td><strong>Last Name</strong></td><td><span class="badge bg-secondary">No</span></td><td>Kanagaraj</td></tr>
+              <tr><td><strong>Email</strong></td><td><span class="badge bg-warning text-dark">Yes</span></td><td>mani@example.com</td></tr>
+              <tr><td><strong>Phone</strong></td><td><span class="badge bg-secondary">No</span></td><td>+91 94400 00001</td></tr>
+              <tr><td><strong>Skills</strong></td><td><span class="badge bg-secondary">No</span></td><td>Swimming, Photography</td></tr>
+              <tr><td><strong>Weekdays</strong></td><td><span class="badge bg-secondary">No</span></td><td>Yes / No</td></tr>
+              <tr><td><strong>Weekends</strong></td><td><span class="badge bg-secondary">No</span></td><td>Yes / No</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h6 class="fw-bold text-primary mb-2"><i class="fab fa-microsoft me-1"></i>Using Microsoft Forms</h6>
+        <ol class="small text-muted ps-3 mb-3">
+          <li>Create a Microsoft Form with fields matching the columns above.</li>
+          <li>Collect responses from volunteers.</li>
+          <li>Open the form in <strong>Microsoft Forms</strong> → click <strong>Responses</strong>.</li>
+          <li>Click <strong>Open in Excel</strong> to download the response spreadsheet.</li>
+          <li>Upload that <strong>.xlsx</strong> file here directly.</li>
+        </ol>
+
+        <h6 class="fw-bold text-info mb-2"><i class="fas fa-file-excel me-1"></i>Using Microsoft Excel</h6>
+        <ol class="small text-muted ps-3">
+          <li>Download the Excel template above.</li>
+          <li>Fill in volunteer details row by row.</li>
+          <li>Save as <strong>.xlsx</strong> and upload here.</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Results -->
+{% if results %}
+<div class="card border-0 shadow-sm mt-4">
+  <div class="card-header bg-dark text-white fw-bold">
+    <i class="fas fa-chart-bar me-2"></i>Import Results
+  </div>
+  <div class="card-body p-4">
+    <div class="row g-3 mb-4 text-center">
+      <div class="col-md-4">
+        <div class="card bg-success text-white border-0 py-3">
+          <div class="fs-2 fw-bold">{{ results.created|length }}</div>
+          <div>Volunteers Added</div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card bg-warning text-dark border-0 py-3">
+          <div class="fs-2 fw-bold">{{ results.skipped|length }}</div>
+          <div>Skipped (already exist)</div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card bg-danger text-white border-0 py-3">
+          <div class="fs-2 fw-bold">{{ results.errors|length }}</div>
+          <div>Errors</div>
+        </div>
+      </div>
+    </div>
+
+    {% if results.created %}
+    <h6 class="fw-bold text-success mb-2"><i class="fas fa-check-circle me-1"></i>Successfully Added</h6>
+    <div class="table-responsive mb-3">
+      <table class="table table-sm table-hover">
+        <thead class="table-success"><tr><th>Name</th><th>Username</th><th>Email</th></tr></thead>
+        <tbody>
+          {% for v in results.created %}
+          <tr>
+            <td>{{ v.name }}</td>
+            <td><code>{{ v.username }}</code></td>
+            <td>{{ v.email }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
+    {% if results.skipped %}
+    <h6 class="fw-bold text-warning mb-2"><i class="fas fa-exclamation-triangle me-1"></i>Skipped</h6>
+    <ul class="list-group list-group-flush mb-3">
+      {% for s in results.skipped %}
+      <li class="list-group-item py-1 small"><strong>{{ s.email }}</strong> — {{ s.reason }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+
+    {% if results.errors %}
+    <h6 class="fw-bold text-danger mb-2"><i class="fas fa-times-circle me-1"></i>Errors</h6>
+    <ul class="list-group list-group-flush">
+      {% for e in results.errors %}
+      <li class="list-group-item py-1 small text-danger">Row {{ e.row }}: {{ e.reason }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
