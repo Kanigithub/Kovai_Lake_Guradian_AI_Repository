@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Manage Announcements â€” Organizer{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <h2><i class="fas fa-bullhorn text-danger me-2"></i>Announcements</h2>
+  <div class="d-flex gap-2">
+    <a href="{% url 'dashboard_app:create_announcement' %}" class="btn btn-danger btn-sm"><i class="fas fa-plus me-1"></i>New Announcement</a>
+    <a href="{% url 'dashboard_app:organizer_dashboard' %}" class="btn btn-outline-secondary btn-sm">â† Dashboard</a>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead class="table-danger">
+        <tr>
+          <th class="ps-3">Title</th>
+          <th>Author</th>
+          <th>Event</th>
+          <th>Published</th>
+          <th>Date</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ann in announcements %}
+        <tr>
+          <td class="ps-3">
+            <strong>{{ ann.title }}</strong><br>
+            <small class="text-muted">{{ ann.content|truncatechars:60 }}</small>
+          </td>
+          <td><small>{{ ann.author.get_full_name|default:ann.author.username }}</small></td>
+          <td><small>{{ ann.event.title|default:"General" }}</small></td>
+          <td>
+            {% if ann.is_published %}
+              <span class="badge bg-success"><i class="fas fa-check me-1"></i>Published</span>
+            {% else %}
+              <span class="badge bg-secondary">Draft</span>
+            {% endif %}
+          </td>
+          <td><small>{{ ann.created_at|date:"M d, Y" }}</small></td>
+          <td>
+            <div class="d-flex gap-1">
+              <a href="{% url 'dashboard_app:edit_announcement' ann.pk %}" class="btn btn-outline-warning btn-sm" title="Edit"><i class="fas fa-edit"></i></a>
+              <a href="{% url 'dashboard_app:delete_announcement' ann.pk %}" class="btn btn-outline-danger btn-sm" title="Delete" data-confirm="Delete this announcement?"><i class="fas fa-trash"></i></a>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-center py-4 text-muted">No announcements yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

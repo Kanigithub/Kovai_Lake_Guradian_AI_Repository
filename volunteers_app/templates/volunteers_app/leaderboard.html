@@ -1,0 +1,57 @@
+﻿{% extends "base.html" %}
+{% block title %}Volunteer Leaderboard — Kovai Lake Guardians{% endblock %}
+{% block content %}
+<div style="background-color: #f0faf4; min-height: 100vh; margin: -1.5rem; padding: 1.5rem;">
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2><i class="fas fa-trophy text-warning me-2"></i>Volunteer Leaderboard</h2>
+</div>
+
+<div class="card shadow border-0" style="background-color: #f0faf4;">
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0" style="background-color: #f0faf4;">
+      <thead class="table-success">
+        <tr>
+          <th class="ps-4">Rank</th>
+          <th>Volunteer</th>
+          <th>Points</th>
+          <th>Availability</th>
+          <th>Skills</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for profile in profiles %}
+        <tr style="background-color: #f0faf4;">
+          <td class="ps-4">
+            <span class="leaderboard-rank {% if forloop.counter == 1 %}rank-1{% elif forloop.counter == 2 %}rank-2{% elif forloop.counter == 3 %}rank-3{% endif %}">
+              {% if forloop.counter == 1 %}<i class="fas fa-crown"></i>
+              {% elif forloop.counter == 2 %}<i class="fas fa-medal"></i>
+              {% elif forloop.counter == 3 %}<i class="fas fa-award"></i>
+              {% else %}{{ forloop.counter }}{% endif %}
+            </span>
+          </td>
+          <td>
+            <strong>{{ profile.user.get_full_name|default:profile.user.username }}</strong>
+            {% if profile.is_organizer %}
+              <span class="badge bg-warning text-dark ms-1"><i class="fas fa-crown"></i> Organizer</span>
+            {% endif %}
+          </td>
+          <td><span class="badge bg-success fs-6">{{ profile.total_points }} pts</span></td>
+          <td>
+            {% if profile.availability_weekdays %}<span class="badge bg-info me-1">Weekdays</span>{% endif %}
+            {% if profile.availability_weekends %}<span class="badge bg-primary">Weekends</span>{% endif %}
+          </td>
+          <td><small class="text-muted">{{ profile.skills|default:"—" }}</small></td>
+        </tr>
+        {% empty %}
+        <tr style="background-color: #f0faf4;">
+          <td colspan="5" class="text-center py-4 text-muted">
+            No volunteers yet. <a href="{% url 'volunteers_app:register' %}">Be the first to join!</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+</div>
+{% endblock %}

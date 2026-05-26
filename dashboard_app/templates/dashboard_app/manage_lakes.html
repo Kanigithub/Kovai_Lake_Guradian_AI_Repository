@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Manage Lakes â€” Organizer{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <h2><i class="fas fa-tint text-info me-2"></i>Manage Lakes</h2>
+  <div class="d-flex gap-2">
+    <a href="{% url 'lakes_app:lake_list' %}" class="btn btn-info btn-sm text-white"><i class="fas fa-eye me-1"></i>Public View</a>
+    <a href="{% url 'dashboard_app:organizer_dashboard' %}" class="btn btn-outline-secondary btn-sm">â† Dashboard</a>
+  </div>
+</div>
+
+<div class="row g-3">
+  {% for lake in lakes %}
+  <div class="col-md-6 col-lg-4">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <h5 class="fw-bold mb-0">{{ lake.name }}</h5>
+          <span class="badge bg-{% if lake.pollution_level == 'critical' %}danger{% elif lake.pollution_level == 'high' %}warning text-dark{% elif lake.pollution_level == 'moderate' %}info{% else %}success{% endif %}">
+            {{ lake.get_pollution_level_display }}
+          </span>
+        </div>
+        <p class="small text-muted mb-2"><i class="fas fa-map-marker-alt me-1"></i>{{ lake.location }}</p>
+        <p class="small mb-2">{{ lake.description|truncatechars:100 }}</p>
+        <div class="d-flex gap-2 small text-muted mb-3">
+          <span><i class="fas fa-expand-alt me-1 text-info"></i>{{ lake.area_sq_km }} km²</span>
+          <span><i class="fas fa-calendar me-1 text-success"></i>{{ lake.event_count }} events</span>
+        </div>
+        <div class="d-flex gap-2">
+          <a href="{% url 'lakes_app:lake_detail' lake.pk %}" class="btn btn-outline-info btn-sm flex-fill"><i class="fas fa-eye me-1"></i>View</a>
+          <a href="{% url 'lakes_app:lake_edit' lake.pk %}" class="btn btn-outline-warning btn-sm flex-fill"><i class="fas fa-edit me-1"></i>Edit</a>
+          <a href="{% url 'lakes_app:lake_add_photo' lake.pk %}" class="btn btn-outline-success btn-sm flex-fill"><i class="fas fa-camera me-1"></i>Photos</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="col-12 text-center py-5 text-muted">No lakes in the system yet.</div>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,59 @@
+﻿{% extends "base.html" %}
+{% block title %}Lakes — Kovai Lake Guardians{% endblock %}
+{% block content %}
+<h2 class="mb-4"><i class="fas fa-tint text-primary me-2"></i>Our Lakes</h2>
+
+<div class="row">
+  {% for lake in lakes %}
+  {% with hero=lake.hero_photo %}
+  <div class="col-md-6 mb-4">
+    <div class="card shadow border-0 h-100">
+      {% if hero %}
+      <div class="position-relative overflow-hidden" style="height:220px;">
+        <img src="{{ hero }}"
+             alt="{{ lake.name }}"
+             class="w-100 h-100"
+             style="object-fit:cover;"
+             onerror="this.closest('.position-relative').remove()">
+        <div class="position-absolute top-0 end-0 m-2">
+          <span class="badge bg-{% if lake.pollution_level == 'low' %}success{% elif lake.pollution_level == 'medium' %}warning text-dark{% elif lake.pollution_level == 'high' %}danger{% else %}dark{% endif %} shadow-sm">
+            <i class="fas fa-circle-dot me-1"></i>{{ lake.get_pollution_level_display }} Pollution
+          </span>
+        </div>
+      </div>
+      {% endif %}
+      <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <h4 class="fw-bold">{{ lake.name }}</h4>
+          {% if not hero %}
+          <span class="badge bg-{% if lake.pollution_level == 'low' %}success{% elif lake.pollution_level == 'medium' %}warning text-dark{% elif lake.pollution_level == 'high' %}danger{% else %}dark{% endif %}">
+            {{ lake.get_pollution_level_display }} Pollution
+          </span>
+          {% endif %}
+        </div>
+        <p class="text-muted mb-2"><i class="fas fa-map-marker-alt me-1 text-danger"></i>{{ lake.location }}</p>
+        {% if lake.area_sq_km %}
+        <p class="text-muted mb-2"><i class="fas fa-expand-alt me-1"></i>{{ lake.area_sq_km }} km²</p>
+        {% endif %}
+        <p class="text-muted small">{{ lake.description|truncatechars:150 }}</p>
+      </div>
+      <div class="card-footer bg-transparent border-0 pb-3 d-flex gap-2">
+        <a href="{% url 'lakes_app:lake_detail' lake.pk %}" class="btn btn-primary btn-sm">
+          <i class="fas fa-info-circle me-1"></i>Learn More
+        </a>
+        {% if user.is_authenticated and user.userprofile.is_organizer %}
+        <a href="{% url 'lakes_app:lake_edit' lake.pk %}" class="btn btn-outline-warning btn-sm">
+          <i class="fas fa-edit me-1"></i>Edit
+        </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endwith %}
+  {% empty %}
+  <div class="col-12">
+    <div class="alert alert-info"><i class="fas fa-info-circle me-2"></i>No lakes added yet.</div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

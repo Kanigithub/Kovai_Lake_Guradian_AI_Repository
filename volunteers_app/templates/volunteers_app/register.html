@@ -1,0 +1,194 @@
+﻿{% extends "base.html" %}
+{% block title %}Register — Kovai Lake Guardians{% endblock %}
+{% block content %}
+<div class="row justify-content-center mt-4">
+  <div class="col-md-8" style="max-width:680px;">
+
+    <!-- Account Type Toggle -->
+    <div class="text-center mb-4">
+      <h3 class="fw-bold text-success mb-1"><i class="fas fa-leaf me-2"></i>Create Your Account</h3>
+      <p class="text-muted small">Join us as an individual volunteer or register your NGO / group</p>
+      <div class="btn-group mt-2" role="group" id="regTypeToggle">
+        <button type="button" class="btn btn-success px-4 fw-bold reg-tab-btn active" data-tab="individual">
+          <i class="fas fa-user me-2"></i>Individual Volunteer
+        </button>
+        <button type="button" class="btn btn-outline-success px-4 fw-bold reg-tab-btn" data-tab="ngo">
+          <i class="fas fa-building me-2"></i>NGO / Organization
+        </button>
+      </div>
+    </div>
+
+    <!-- Individual Volunteer Form -->
+    <div id="tab-individual" class="reg-tab-panel {% if active_tab == 'ngo' %}d-none{% endif %}">
+      <div class="card shadow border-0">
+        <div class="card-header bg-success text-white py-3">
+          <h5 class="mb-0"><i class="fas fa-user-plus me-2"></i>Individual Volunteer Registration</h5>
+          <small class="opacity-75">Join as a single volunteer and earn badges for your contributions</small>
+        </div>
+        <div class="card-body p-4">
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="reg_type" value="individual">
+            {% for field in form %}
+            <div class="mb-3">
+              <label for="{{ field.id_for_label }}" class="form-label fw-semibold">{{ field.label }}</label>
+              <input type="{{ field.field.widget.input_type }}"
+                     name="{{ field.html_name }}"
+                     id="{{ field.id_for_label }}"
+                     class="form-control {% if field.errors %}is-invalid{% endif %}"
+                     {% if field.value %}value="{{ field.value }}"{% endif %}>
+              {% if field.help_text %}<div class="form-text text-muted small">{{ field.help_text }}</div>{% endif %}
+              {% for error in field.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+            </div>
+            {% endfor %}
+            <div class="d-grid mt-4">
+              <button type="submit" class="btn btn-success btn-lg fw-bold">
+                <i class="fas fa-user-plus me-2"></i>Create Volunteer Account
+              </button>
+            </div>
+          </form>
+        </div>
+        <div class="card-footer text-center text-muted py-3">
+          Already have an account? <a href="{% url 'volunteers_app:login' %}" class="text-success fw-semibold">Login here</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- NGO / Organization Form -->
+    <div id="tab-ngo" class="reg-tab-panel {% if active_tab != 'ngo' %}d-none{% endif %}">
+      <div class="card shadow border-0">
+        <div class="card-header py-3" style="background:#1b5e20;">
+          <h5 class="mb-0 text-white"><i class="fas fa-building me-2"></i>NGO / Organization Registration</h5>
+          <small class="text-white opacity-75">Register your group to coordinate volunteers and lead cleanup drives</small>
+        </div>
+        <div class="card-body p-4">
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="reg_type" value="ngo">
+
+            <!-- Organization Details -->
+            <div class="alert alert-success py-2 mb-4 small">
+              <i class="fas fa-info-circle me-1"></i>
+              <strong>Section 1:</strong> Organization Details
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Organization Name <span class="text-danger">*</span></label>
+              <input type="text" name="organization_name" class="form-control {% if ngo_form.organization_name.errors %}is-invalid{% endif %}"
+                     placeholder="e.g. Green Earth Foundation" value="{{ ngo_form.organization_name.value|default:'' }}">
+              {% for error in ngo_form.organization_name.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Organization Type <span class="text-danger">*</span></label>
+                <select name="organization_type" class="form-select {% if ngo_form.organization_type.errors %}is-invalid{% endif %}">
+                  <option value="">-- Select Type --</option>
+                  <option value="environmental" {% if ngo_form.organization_type.value == 'environmental' %}selected{% endif %}>Environmental NGO</option>
+                  <option value="corporate" {% if ngo_form.organization_type.value == 'corporate' %}selected{% endif %}>Corporate CSR Group</option>
+                  <option value="educational" {% if ngo_form.organization_type.value == 'educational' %}selected{% endif %}>Educational Institution</option>
+                  <option value="community" {% if ngo_form.organization_type.value == 'community' %}selected{% endif %}>Community / Resident Group</option>
+                  <option value="religious" {% if ngo_form.organization_type.value == 'religious' %}selected{% endif %}>Religious / Cultural Group</option>
+                  <option value="government" {% if ngo_form.organization_type.value == 'government' %}selected{% endif %}>Government Body</option>
+                  <option value="other" {% if ngo_form.organization_type.value == 'other' %}selected{% endif %}>Other</option>
+                </select>
+                {% for error in ngo_form.organization_type.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Number of Members <span class="text-danger">*</span></label>
+                <input type="number" name="organization_size" min="2" class="form-control {% if ngo_form.organization_size.errors %}is-invalid{% endif %}"
+                       placeholder="e.g. 25" value="{{ ngo_form.organization_size.value|default:'' }}">
+                {% for error in ngo_form.organization_size.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Website <span class="text-muted small fw-normal">(optional)</span></label>
+              <input type="url" name="organization_website" class="form-control"
+                     placeholder="https://yourorg.org" value="{{ ngo_form.organization_website.value|default:'' }}">
+            </div>
+            <div class="mb-4">
+              <label class="form-label fw-semibold">About Your Organization <span class="text-muted small fw-normal">(optional)</span></label>
+              <textarea name="organization_description" class="form-control" rows="3"
+                        placeholder="Brief description of your NGO / group mission and activities">{{ ngo_form.organization_description.value|default:'' }}</textarea>
+            </div>
+
+            <!-- Contact Person / Login Details -->
+            <div class="alert alert-success py-2 mb-4 small">
+              <i class="fas fa-info-circle me-1"></i>
+              <strong>Section 2:</strong> Contact Person &amp; Login Details
+            </div>
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">First Name <span class="text-danger">*</span></label>
+                <input type="text" name="first_name" class="form-control {% if ngo_form.first_name.errors %}is-invalid{% endif %}"
+                       placeholder="Contact person first name" value="{{ ngo_form.first_name.value|default:'' }}">
+                {% for error in ngo_form.first_name.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Last Name</label>
+                <input type="text" name="last_name" class="form-control"
+                       placeholder="Contact person last name" value="{{ ngo_form.last_name.value|default:'' }}">
+              </div>
+            </div>
+            {% for field in ngo_form %}
+              {% if field.html_name in 'username,email,password1,password2' %}
+              <div class="mb-3">
+                <label for="ngo_{{ field.id_for_label }}" class="form-label fw-semibold">{{ field.label }}</label>
+                <input type="{{ field.field.widget.input_type }}"
+                       name="{{ field.html_name }}"
+                       id="ngo_{{ field.id_for_label }}"
+                       class="form-control {% if field.errors %}is-invalid{% endif %}"
+                       {% if field.value %}value="{{ field.value }}"{% endif %}>
+                {% if field.help_text %}<div class="form-text text-muted small">{{ field.help_text }}</div>{% endif %}
+                {% for error in field.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+              </div>
+              {% endif %}
+            {% endfor %}
+
+            <div class="d-grid mt-4">
+              <button type="submit" class="btn btn-lg fw-bold text-white" style="background:#1b5e20;">
+                <i class="fas fa-building me-2"></i>Register Our Organization
+              </button>
+            </div>
+          </form>
+        </div>
+        <div class="card-footer text-center text-muted py-3">
+          Already have an account? <a href="{% url 'volunteers_app:login' %}" class="text-success fw-semibold">Login here</a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const btns = document.querySelectorAll('.reg-tab-btn');
+  const panels = document.querySelectorAll('.reg-tab-panel');
+  const activeTab = '{{ active_tab }}';
+
+  // Sync button state with active_tab from server
+  btns.forEach(btn => {
+    btn.classList.remove('active', 'btn-success');
+    btn.classList.add('btn-outline-success');
+    if (btn.dataset.tab === activeTab) {
+      btn.classList.add('active', 'btn-success');
+      btn.classList.remove('btn-outline-success');
+    }
+  });
+
+  btns.forEach(btn => {
+    btn.addEventListener('click', function () {
+      const target = this.dataset.tab;
+      btns.forEach(b => {
+        b.classList.remove('active', 'btn-success');
+        b.classList.add('btn-outline-success');
+      });
+      this.classList.add('active', 'btn-success');
+      this.classList.remove('btn-outline-success');
+      panels.forEach(p => {
+        p.id === 'tab-' + target ? p.classList.remove('d-none') : p.classList.add('d-none');
+      });
+    });
+  });
+});
+</script>
+{% endblock %}

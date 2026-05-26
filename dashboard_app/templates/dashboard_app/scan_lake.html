@@ -1,0 +1,340 @@
+{% extends "base.html" %}
+{% block title %}AI Lake Scan — Kovai Lake Guardians{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+  <div>
+    <h2 class="fw-bold mb-1"><i class="fas fa-satellite-dish text-info me-2"></i>AI Lake Scan</h2>
+    <p class="text-muted mb-0">Upload a lake photograph to get an AI-powered pollution analysis report.</p>
+  </div>
+  <a href="{% url 'dashboard_app:organizer_dashboard' %}" class="btn btn-outline-secondary btn-sm">
+    <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+  </a>
+</div>
+
+<div class="row g-4">
+
+  <!-- Upload Card -->
+  <div class="col-lg-4">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-info text-white fw-bold">
+        <i class="fas fa-camera me-2"></i>Upload Lake Photo
+      </div>
+      <div class="card-body p-4">
+        <form id="scanForm">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Select Lake</label>
+            <select name="lake_name" id="lakeSelect" class="form-select">
+              <option value="Unknown">— Select a lake (optional) —</option>
+              {% for lake in lakes %}
+              <option value="{{ lake.name }}">{{ lake.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Lake Photo</label>
+            <input type="file" id="photoInput" name="photo" class="form-control"
+                   accept="image/jpeg,image/png,image/webp,image/gif" required>
+            <div class="form-text">Supported: JPG, PNG, WEBP, GIF</div>
+          </div>
+
+          <!-- Image preview -->
+          <div id="previewBox" class="mb-3 d-none text-center">
+            <img id="previewImg" src="" alt="Preview"
+                 class="img-fluid rounded border" style="max-height:220px;">
+          </div>
+
+          <button type="submit" class="btn btn-info text-white w-100 fw-bold" id="scanBtn">
+            <i class="fas fa-search me-2"></i>Scan Lake
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Results Panel -->
+  <div class="col-lg-8">
+
+    <!-- Placeholder -->
+    <div id="placeholder" class="card border-0 shadow-sm">
+      <div class="card-body text-center py-5 text-muted">
+        <i class="fas fa-image fa-3x mb-3 opacity-50"></i>
+        <p class="mb-0">Upload a photo and click <strong>Scan Lake</strong> to generate a full AI analysis report.</p>
+      </div>
+    </div>
+
+    <!-- Spinner -->
+    <div id="spinner" class="card border-0 shadow-sm d-none">
+      <div class="card-body text-center py-5">
+        <div class="spinner-border text-info" role="status" style="width:3rem;height:3rem;"></div>
+        <p class="mt-3 text-muted">Analysing image with Gemini AI…</p>
+      </div>
+    </div>
+
+    <!-- Full Report Output -->
+    <div id="reportOutput" class="d-none">
+
+      <!-- ① Verification -->
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header fw-bold bg-secondary text-white">
+          <i class="fas fa-eye me-2"></i>Visual Evidence &amp; Verification
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-md-8">
+              <p class="small mb-1 text-muted fw-semibold">OBSERVED EVIDENCE</p>
+              <p class="mb-0 small" id="visualEvidence">—</p>
+            </div>
+            <div class="col-md-4">
+              <p class="small mb-1 text-muted fw-semibold">LAKE</p>
+              <p class="mb-0 fw-bold" id="lakeName">—</p>
+              <p class="small mb-1 text-muted fw-semibold mt-2">SURFACE AREA</p>
+              <p class="mb-0 small" id="surfaceArea">—</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ② Assessment -->
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header fw-bold bg-danger text-white">
+          <i class="fas fa-exclamation-triangle me-2"></i>Assessment &amp; Identified Issues
+        </div>
+        <div class="card-body">
+          <div class="alert alert-light border mb-3 small" id="overallDescription">—</div>
+          <div id="issueCards" class="row g-2"></div>
+        </div>
+      </div>
+
+      <!-- ③ Volunteer Mobilisation -->
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header fw-bold bg-success text-white">
+          <i class="fas fa-users me-2"></i>Volunteer Mobilisation
+        </div>
+        <div class="card-body">
+          <div class="row g-3 mb-3">
+            <div class="col-sm-4 text-center">
+              <div class="display-5 fw-bold text-success" id="volunteerCount">—</div>
+              <div class="small text-muted">Volunteers Needed</div>
+            </div>
+            <div class="col-sm-8">
+              <p class="small mb-1 text-muted fw-semibold">RATIONALE</p>
+              <p class="small mb-0" id="volunteerRationale">—</p>
+            </div>
+          </div>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <p class="small fw-semibold text-muted mb-2"><i class="fas fa-hard-hat me-1 text-warning"></i>REQUIRED TOOLS</p>
+              <ul class="list-group list-group-flush small" id="toolsList"></ul>
+            </div>
+            <div class="col-md-6">
+              <p class="small fw-semibold text-muted mb-2"><i class="fas fa-tasks me-1 text-info"></i>MANUAL DUTIES</p>
+              <ul class="list-group list-group-flush small" id="dutiesList"></ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ④ Reporting Contacts -->
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header fw-bold bg-primary text-white">
+          <i class="fas fa-phone-alt me-2"></i>Point of Contact &amp; Reporting Authorities
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover table-sm mb-0 small">
+              <thead class="table-light">
+                <tr>
+                  <th>Authority</th>
+                  <th>Related Issues</th>
+                  <th>Phone</th>
+                  <th>Online Method</th>
+                </tr>
+              </thead>
+              <tbody id="contactsTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /reportOutput -->
+
+    <!-- Error -->
+    <div id="errorOutput" class="d-none">
+      <div class="alert alert-danger">
+        <i class="fas fa-times-circle me-2"></i>
+        <span id="errorText">An error occurred.</span>
+      </div>
+    </div>
+
+  </div><!-- /col -->
+</div><!-- /row -->
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  const form       = document.getElementById('scanForm');
+  const photoInput = document.getElementById('photoInput');
+  const previewBox = document.getElementById('previewBox');
+  const previewImg = document.getElementById('previewImg');
+  const scanBtn    = document.getElementById('scanBtn');
+
+  const states = ['placeholder', 'spinner', 'reportOutput', 'errorOutput'];
+
+  function showState(id) {
+    states.forEach(s => document.getElementById(s).classList.add('d-none'));
+    document.getElementById(id).classList.remove('d-none');
+  }
+
+  // CSRF from cookie
+  function getCsrfToken() {
+    const m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+    return m ? decodeURIComponent(m[1]) : '{{ csrf_token }}';
+  }
+
+  // Live image preview
+  photoInput.addEventListener('change', function () {
+    const file = this.files[0];
+    if (!file) { previewBox.classList.add('d-none'); return; }
+    previewImg.src = URL.createObjectURL(file);
+    previewBox.classList.remove('d-none');
+  });
+
+  // Confidence badge colour
+  function confidenceColour(score) {
+    return score === 'High' ? 'danger' : score === 'Medium' ? 'warning' : 'secondary';
+  }
+
+  function setText(id, val) {
+    document.getElementById(id).textContent = val || '—';
+  }
+
+  function renderList(id, items, iconClass) {
+    const el = document.getElementById(id);
+    el.innerHTML = '';
+    (items || []).forEach(item => {
+      const li = document.createElement('li');
+      li.className = 'list-group-item py-1 px-0 border-0';
+      li.innerHTML = `<i class="${iconClass} me-2"></i>${item}`;
+      el.appendChild(li);
+    });
+    if (!el.children.length) {
+      el.innerHTML = '<li class="list-group-item py-1 px-0 border-0 text-muted">None listed</li>';
+    }
+  }
+
+  function renderReport(result) {
+    const v  = result.verification         || {};
+    const ld = result.lakeDetails           || {};
+    const a  = result.assessment            || {};
+    const vm = result.volunteerMobilization || {};
+    const rc = result.reportingContacts     || [];
+
+    // ① Verification
+    setText('visualEvidence', v.visualEvidenceObserved);
+    setText('lakeName',    ld.lakeName);
+    setText('surfaceArea', ld.surfaceArea);
+
+    // ② Assessment
+    setText('overallDescription', a.overallDescription);
+    const issueCards = document.getElementById('issueCards');
+    issueCards.innerHTML = '';
+    (a.identifiedIssues || []).forEach(issue => {
+      const col = document.createElement('div');
+      col.className = 'col-md-6';
+      col.innerHTML = `
+        <div class="card border-${confidenceColour(issue.confidenceScore)} border-opacity-50 h-100">
+          <div class="card-body py-2 px-3">
+            <div class="d-flex justify-content-between align-items-start mb-1">
+              <span class="fw-bold small">${issue.issueType || 'Unknown'}</span>
+              <span class="badge bg-${confidenceColour(issue.confidenceScore)} ms-2">${issue.confidenceScore || '—'}</span>
+            </div>
+            <p class="mb-0 small text-muted">${issue.description || '—'}</p>
+          </div>
+        </div>`;
+      issueCards.appendChild(col);
+    });
+    if (!issueCards.children.length) {
+      issueCards.innerHTML = '<div class="col"><p class="text-muted small">No issues identified.</p></div>';
+    }
+
+    // ③ Volunteer Mobilisation
+    setText('volunteerCount',     vm.estimatedVolunteersNeeded ?? '—');
+    setText('volunteerRationale', vm.rationaleForCount);
+    renderList('toolsList',  vm.requiredTools, 'fas fa-wrench text-warning');
+    renderList('dutiesList', vm.manualDuties,  'fas fa-check-circle text-info');
+
+    // ④ Reporting Contacts
+    const tbody = document.getElementById('contactsTable');
+    tbody.innerHTML = '';
+    rc.forEach(c => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="fw-semibold">${c.authority || '—'}</td>
+        <td>${(c.relatedIssues || []).map(i => `<span class="badge bg-danger bg-opacity-75 me-1">${i}</span>`).join('')}</td>
+        <td>${c.phone || 'N/A'}</td>
+        <td>${c.onlineMethod || 'N/A'}</td>`;
+      tbody.appendChild(tr);
+    });
+    if (!tbody.children.length) {
+      tbody.innerHTML = '<tr><td colspan="4" class="text-muted">No contacts listed.</td></tr>';
+    }
+
+    showState('reportOutput');
+  }
+
+  form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    if (!photoInput.files.length) { alert('Please select a photo first.'); return; }
+
+    showState('spinner');
+    scanBtn.disabled = true;
+
+    const formData = new FormData();
+    formData.append('photo', photoInput.files[0]);
+    formData.append('lake_name', document.getElementById('lakeSelect').value);
+
+    let res;
+    try {
+      res = await fetch("{% url 'dashboard_app:scan_lake' %}", {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCsrfToken() },
+        body: formData,
+      });
+
+      const rawText = await res.text();
+      let data;
+      try {
+        data = JSON.parse(rawText);
+      } catch (_) {
+        document.getElementById('errorText').textContent =
+          `Server returned HTTP ${res.status}. `
+          + (res.status === 403 ? 'CSRF or permission error — try refreshing the page.'
+           : res.status === 302 ? 'Session expired — please log in again.'
+           : 'An unexpected server error occurred. Check the server logs.');
+        showState('errorOutput');
+        return;
+      }
+
+      if (data.success && data.report && data.report.result) {
+        renderReport(data.report.result);
+      } else if (data.success && data.report) {
+        renderReport(data.report);
+      } else {
+        document.getElementById('errorText').textContent = data.error || 'Unknown error from AI service.';
+        showState('errorOutput');
+      }
+
+    } catch (err) {
+      document.getElementById('errorText').textContent =
+        'Could not reach the server. Make sure the development server is running.';
+      showState('errorOutput');
+    } finally {
+      scanBtn.disabled = false;
+    }
+  });
+})();
+</script>
+{% endblock %}

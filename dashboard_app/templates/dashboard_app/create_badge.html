@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Create Badge — Kovai Lake Guardians{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <h2 class="fw-bold mb-0"><i class="fas fa-plus-circle text-warning me-2"></i>Create New Badge</h2>
+  <a href="{% url 'dashboard_app:manage_badges' %}" class="btn btn-outline-secondary btn-sm">
+    <i class="fas fa-arrow-left me-1"></i>Back to Badges
+  </a>
+</div>
+
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+    <div class="card border-0 shadow-sm">
+      <div class="card-body p-4">
+        <form method="post">
+          {% csrf_token %}
+          {% for field in form %}
+          <div class="mb-3">
+            <label class="form-label fw-semibold">{{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}</label>
+            {{ field }}
+            {% if field.help_text %}
+              <div class="form-text">{{ field.help_text|safe }}</div>
+            {% endif %}
+            {% for error in field.errors %}
+              <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+          </div>
+          {% endfor %}
+
+          <!-- Live icon preview -->
+          <div class="mb-3 text-center" id="iconPreviewBox">
+            <span class="text-muted small">Icon preview: </span>
+            <i id="iconPreview" class="fas fa-award fa-2x text-warning ms-2"></i>
+          </div>
+
+          <button type="submit" class="btn btn-warning w-100 fw-bold">
+            <i class="fas fa-save me-1"></i>Create Badge
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const iconInput = document.getElementById('id_icon');
+  const iconEl    = document.getElementById('iconPreview');
+  if (iconInput) {
+    iconInput.addEventListener('input', function () {
+      iconEl.className = (this.value.trim() || 'fas fa-award') + ' fa-2x text-warning ms-2';
+    });
+  }
+</script>
+{% endblock %}

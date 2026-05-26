@@ -1,0 +1,61 @@
+﻿{% extends "base.html" %}
+{% block title %}Events — Kovai Lake Guardians{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2><i class="fas fa-calendar-alt text-success me-2"></i>Clean-Up Events</h2>
+  {% if user.is_authenticated and user.userprofile.is_organizer %}
+  <a href="{% url 'events_app:event_create' %}" class="btn btn-success">
+    <i class="fas fa-plus me-1"></i>Create Event
+  </a>
+  {% endif %}
+</div>
+
+<!-- Filter Tabs -->
+<ul class="nav nav-pills mb-4">
+  <li class="nav-item">
+    <a class="nav-link {% if not status_filter %}active{% endif %}" href="{% url 'events_app:event_list' %}">All</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link {% if status_filter == 'upcoming' %}active{% endif %}" href="?status=upcoming">Upcoming</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link {% if status_filter == 'completed' %}active{% endif %}" href="?status=completed">Completed</a>
+  </li>
+</ul>
+
+<div class="row">
+  {% for event in events %}
+  <div class="col-md-6 col-lg-4 mb-4">
+    <div class="card shadow-sm h-100 border-0">
+      <div class="card-body">
+        <div class="d-flex justify-content-between mb-2">
+          <span class="badge bg-{% if event.status == 'upcoming' %}success{% elif event.status == 'completed' %}secondary{% elif event.status == 'ongoing' %}primary{% else %}danger{% endif %}">
+            {{ event.get_status_display }}
+          </span>
+          {% if event.lake %}
+          <small class="text-muted"><i class="fas fa-tint me-1"></i>{{ event.lake.name }}</small>
+          {% endif %}
+        </div>
+        <h5 class="card-title fw-bold">{{ event.title }}</h5>
+        <p class="text-muted small mb-1"><i class="fas fa-map-marker-alt me-1 text-danger"></i>{{ event.location }}</p>
+        <p class="text-muted small mb-1"><i class="fas fa-calendar me-1 text-primary"></i>{{ event.date }} at {{ event.start_time }}</p>
+        <p class="card-text small text-muted">{{ event.description|truncatechars:100 }}</p>
+        <div class="progress mb-2" style="height: 6px;">
+          <div class="progress-bar bg-success" style="width: {% widthratio event.registered_count event.max_volunteers 100 %}%"></div>
+        </div>
+        <small class="text-muted">{{ event.registered_count }}/{{ event.max_volunteers }} volunteers</small>
+      </div>
+      <div class="card-footer bg-transparent border-0 pb-3">
+        <a href="{% url 'events_app:event_detail' event.pk %}" class="btn btn-sm btn-outline-success w-100">
+          View Details &amp; Register
+        </a>
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="col-12">
+    <div class="alert alert-info"><i class="fas fa-info-circle me-2"></i>No events found.</div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

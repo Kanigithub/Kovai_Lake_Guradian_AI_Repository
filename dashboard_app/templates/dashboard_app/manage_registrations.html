@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Registrations â€” {{ event.title }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <div>
+    <h2><i class="fas fa-user-check text-primary me-2"></i>Registrations</h2>
+    <small class="text-muted">{{ event.title }} &bull; {{ event.date }} &bull; {{ event.location }}</small>
+  </div>
+  <a href="{% url 'dashboard_app:manage_events' %}" class="btn btn-outline-secondary btn-sm">â† Events</a>
+</div>
+
+<div class="row mb-3">
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm text-center py-3">
+      <div class="fs-2 fw-bold text-primary">{{ regs.count }}</div>
+      <small class="text-muted">Total Registrations</small>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm text-center py-3">
+      <div class="fs-2 fw-bold text-success">{{ event.registered_count }}</div>
+      <small class="text-muted">Max Capacity</small>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm text-center py-3">
+      <div class="fs-2 fw-bold text-warning">{{ event.spots_left }}</div>
+      <small class="text-muted">Spots Remaining</small>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm text-center py-3">
+      <div class="fs-2 fw-bold text-info">{{ event.max_volunteers }}</div>
+      <small class="text-muted">Max Volunteers</small>
+    </div>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead class="table-primary">
+        <tr>
+          <th class="ps-3">#</th>
+          <th>Volunteer</th>
+          <th>Role</th>
+          <th>Registered</th>
+          <th>Status</th>
+          <th>Hours</th>
+          <th>Update</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for reg in regs %}
+        <tr>
+          <td class="ps-3">{{ forloop.counter }}</td>
+          <td>
+            <strong>{{ reg.volunteer.get_full_name|default:reg.volunteer.username }}</strong><br>
+            <small class="text-muted">{{ reg.volunteer.email }}</small>
+          </td>
+          <td><small>{{ reg.role.name|default:"General" }}</small></td>
+          <td><small>{{ reg.registered_at|date:"M d, Y" }}</small></td>
+          <td>
+            <span class="badge bg-{% if reg.status == 'attended' %}success{% elif reg.status == 'cancelled' %}danger{% else %}warning text-dark{% endif %}">
+              {{ reg.get_status_display }}
+            </span>
+          </td>
+          <td>{{ reg.hours_logged|floatformat:1 }}h</td>
+          <td>
+            <form method="post" action="{% url 'dashboard_app:update_registration' reg.pk %}" class="d-flex gap-1">
+              {% csrf_token %}
+              <select name="status" class="form-select form-select-sm" style="width:105px;">
+                <option value="registered" {% if reg.status == 'registered' %}selected{% endif %}>Registered</option>
+                <option value="attended" {% if reg.status == 'attended' %}selected{% endif %}>Attended</option>
+                <option value="cancelled" {% if reg.status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+              </select>
+              <input type="number" name="hours_logged" value="{{ reg.hours_logged }}" min="0" step="0.5" class="form-control form-control-sm" style="width:70px;" placeholder="hrs">
+              <button type="submit" class="btn btn-sm btn-success"><i class="fas fa-save"></i></button>
+            </form>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" class="text-center py-4 text-muted">No registrations yet for this event.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

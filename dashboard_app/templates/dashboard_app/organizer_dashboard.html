@@ -1,0 +1,185 @@
+﻿{% extends "base.html" %}
+{% block title %}Organizer Dashboard — Kovai Lake Guardians{% endblock %}
+{% block content %}
+
+<!-- Header -->
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+  <div>
+    <h2 class="mb-0"><i class="fas fa-tachometer-alt text-success me-2"></i>Organizer Dashboard</h2>
+    <small class="text-muted">Full admin access — Kovai Lake Guardians</small>
+  </div>
+  <div class="d-flex flex-wrap gap-2">
+    <a href="{% url 'events_app:event_create' %}" class="btn btn-success btn-sm"><i class="fas fa-plus me-1"></i>New Event</a>
+    <a href="{% url 'lakes_app:lake_list' %}" class="btn btn-info btn-sm text-white"><i class="fas fa-tint me-1"></i>Lakes</a>
+    <a href="{% url 'dashboard_app:create_announcement' %}" class="btn btn-warning btn-sm"><i class="fas fa-bullhorn me-1"></i>Announce</a>
+    <a href="{% url 'dashboard_app:send_message' %}" class="btn btn-primary btn-sm"><i class="fas fa-envelope me-1"></i>Message</a>
+    <a href="{% url 'dashboard_app:import_volunteers' %}" class="btn btn-outline-success btn-sm"><i class="fas fa-file-excel me-1"></i>Import Volunteers</a>
+    <a href="{% url 'dashboard_app:scan_lake_page' %}" class="btn btn-outline-info btn-sm"><i class="fas fa-satellite-dish me-1"></i>AI Lake Scan</a>
+    <a href="{% url 'dashboard_app:manage_badges' %}" class="btn btn-outline-warning btn-sm"><i class="fas fa-medal me-1"></i>Manage Badges</a>
+  </div>
+</div>
+
+<!-- Stats Row -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3 col-lg-2">
+    <div class="card border-0 shadow-sm text-center h-100 py-2">
+      <div class="card-body p-2">
+        <i class="fas fa-calendar-check fa-2x text-success mb-1"></i>
+        <div class="fs-3 fw-bold text-success">{{ total_events }}</div>
+        <small class="text-muted">Total Events</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3 col-lg-2">
+    <div class="card border-0 shadow-sm text-center h-100 py-2">
+      <div class="card-body p-2">
+        <i class="fas fa-calendar-alt fa-2x text-primary mb-1"></i>
+        <div class="fs-3 fw-bold text-primary">{{ upcoming_events }}</div>
+        <small class="text-muted">Upcoming</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3 col-lg-2">
+    <div class="card border-0 shadow-sm text-center h-100 py-2">
+      <div class="card-body p-2">
+        <i class="fas fa-check-circle fa-2x text-secondary mb-1"></i>
+        <div class="fs-3 fw-bold text-secondary">{{ completed_events }}</div>
+        <small class="text-muted">Completed</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3 col-lg-2">
+    <div class="card border-0 shadow-sm text-center h-100 py-2">
+      <div class="card-body p-2">
+        <i class="fas fa-tint fa-2x text-info mb-1"></i>
+        <div class="fs-3 fw-bold text-info">{{ total_lakes }}</div>
+        <small class="text-muted">Lakes</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3 col-lg-2">
+    <div class="card border-0 shadow-sm text-center h-100 py-2">
+      <div class="card-body p-2">
+        <i class="fas fa-users fa-2x text-warning mb-1"></i>
+        <div class="fs-3 fw-bold text-warning">{{ total_volunteers }}</div>
+        <small class="text-muted">Volunteers</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3 col-lg-2">
+    <div class="card border-0 shadow-sm text-center h-100 py-2">
+      <div class="card-body p-2">
+        <i class="fas fa-clock fa-2x text-danger mb-1"></i>
+        <div class="fs-3 fw-bold text-danger">{{ total_hours|floatformat:0 }}</div>
+        <small class="text-muted">Hours Logged</small>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Quick Access Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <a href="{% url 'dashboard_app:manage_events' %}" class="text-decoration-none">
+      <div class="card border-0 shadow-sm quick-card h-100">
+        <div class="card-body text-center py-4">
+          <i class="fas fa-calendar fa-3x text-success mb-3"></i>
+          <h6 class="fw-bold">Manage Events</h6>
+          <small class="text-muted">Create, edit, update status</small>
+        </div>
+      </div>
+    </a>
+  </div>
+  <div class="col-md-3">
+    <a href="{% url 'dashboard_app:volunteer_list' %}" class="text-decoration-none">
+      <div class="card border-0 shadow-sm quick-card h-100">
+        <div class="card-body text-center py-4">
+          <i class="fas fa-users fa-3x text-warning mb-3"></i>
+          <h6 class="fw-bold">Manage Volunteers</h6>
+          <small class="text-muted">View profiles, award badges</small>
+        </div>
+      </div>
+    </a>
+  </div>
+  <div class="col-md-3">
+    <a href="{% url 'dashboard_app:manage_lakes' %}" class="text-decoration-none">
+      <div class="card border-0 shadow-sm quick-card h-100">
+        <div class="card-body text-center py-4">
+          <i class="fas fa-tint fa-3x text-info mb-3"></i>
+          <h6 class="fw-bold">Manage Lakes</h6>
+          <small class="text-muted">Edit lake info, add photos</small>
+        </div>
+      </div>
+    </a>
+  </div>
+  <div class="col-md-3">
+    <a href="{% url 'dashboard_app:manage_announcements' %}" class="text-decoration-none">
+      <div class="card border-0 shadow-sm quick-card h-100">
+        <div class="card-body text-center py-4">
+          <i class="fas fa-bullhorn fa-3x text-danger mb-3"></i>
+          <h6 class="fw-bold">Announcements</h6>
+          <small class="text-muted">Create, edit, publish</small>
+        </div>
+      </div>
+    </a>
+  </div>
+  <div class="col-md-3">
+    <a href="{% url 'dashboard_app:scan_lake_page' %}" class="text-decoration-none">
+      <div class="card border-0 shadow-sm quick-card h-100">
+        <div class="card-body text-center py-4">
+          <i class="fas fa-satellite-dish fa-3x text-info mb-3"></i>
+          <h6 class="fw-bold">AI Lake Scan</h6>
+          <small class="text-muted">AI-powered pollution analysis</small>
+        </div>
+      </div>
+    </a>
+  </div>
+  <div class="col-md-3">
+    <a href="{% url 'dashboard_app:manage_badges' %}" class="text-decoration-none">
+      <div class="card border-0 shadow-sm quick-card h-100">
+        <div class="card-body text-center py-4">
+          <i class="fas fa-medal fa-3x text-warning mb-3"></i>
+          <h6 class="fw-bold">Manage Badges</h6>
+          <small class="text-muted">Create, auto-allocate badges</small>
+        </div>
+      </div>
+    </a>
+  </div>
+</div>
+
+<div class="row g-3">
+  <!-- Recent Registrations -->
+  <div class="col-12">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-primary text-white fw-bold d-flex justify-content-between align-items-center">
+        <span><i class="fas fa-user-check me-2"></i>Recent Registrations <span class="badge bg-white text-primary ms-1">{{ active_registrations }}</span></span>
+        <a href="{% url 'dashboard_app:manage_events' %}" class="text-white small">Manage by Event &rarr;</a>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+          <thead class="table-light">
+            <tr><th>Volunteer</th><th>Event</th><th>Registered</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            {% for reg in pending_registrations %}
+            <tr>
+              <td>{{ reg.volunteer.get_full_name|default:reg.volunteer.username }}</td>
+              <td><small>{{ reg.event.title|truncatechars:35 }}</small></td>
+              <td><small class="text-muted">{{ reg.registered_at|date:"M d, Y" }}</small></td>
+              <td><span class="badge bg-{% if reg.status == 'attended' %}success{% elif reg.status == 'cancelled' %}danger{% else %}warning text-dark{% endif %}">{{ reg.get_status_display }}</span></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="text-center text-muted py-3">No registrations yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.quick-card { transition: transform .15s, box-shadow .15s; cursor: pointer; }
+.quick-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,.12) !important; }
+</style>
+{% endblock %}
