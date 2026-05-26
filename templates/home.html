@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}Home — Kovai Lake Guardians{% endblock %}
+{% block content %}
+
+<div class="hero-section rounded-3 mb-5 text-white text-center p-5 position-relative overflow-hidden"
+     style="background: linear-gradient(rgba(0,30,15,0.60), rgba(0,55,30,0.68)),
+            url('https://images.unsplash.com/photo-1470770841072-f978cf4d019e?auto=format&fit=crop&w=1950&q=80')
+            center/cover no-repeat;
+            min-height: 360px;">
+  <div class="position-relative" style="z-index:2;">
+    <h1 class="display-4 fw-bold drop-shadow d-flex align-items-center justify-content-center flex-wrap gap-3">
+      <span class="fa-stack" style="font-size:0.65em; vertical-align:middle;">
+        <i class="fas fa-circle fa-stack-2x" style="color:rgba(255,255,255,0.18);"></i>
+        <i class="fas fa-water fa-stack-1x text-white"></i>
+      </span>
+      <span>Kovai Lake Guardians</span>
+    </h1>
+    <p class="lead mt-3">Join the community movement to restore and protect Lakes available in Coimbatore.</p>
+    <div class="mt-4">
+      {% if not user.is_authenticated %}
+      <a href="{% url 'volunteers_app:register' %}" class="btn btn-light btn-lg me-3 fw-bold">
+        <i class="fas fa-user-plus me-2"></i>Become a Volunteer
+      </a>
+      {% endif %}
+      <a href="{% url 'events_app:event_list' %}" class="btn btn-outline-light btn-lg">
+        <i class="fas fa-calendar-alt me-2"></i>View Events
+      </a>
+    </div>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-5"
+     style="background: linear-gradient(135deg, #f0faf4 0%, #e8f4fd 100%);">
+  <div class="card-body p-4 p-md-5">
+    <div class="row align-items-center g-4">
+      <div class="col-lg-8">
+        <h2 class="fw-bold text-success mb-3">
+          <i class="fas fa-robot me-2"></i>AI-Powered Lake Restoration
+        </h2>
+        <p class="mb-3" style="font-size:1.05rem; line-height:1.75;">
+          <strong>Clean Lake Together</strong> is an innovative web application built to restore and protect the
+          lakes of Coimbatore using the power of <strong>Artificial Intelligence</strong>. Our platform brings
+          together technology, community, and environmental responsibility to tackle pollution and promote
+          sustainable water management.
+        </p>
+        <p class="mb-3" style="font-size:1.05rem; line-height:1.75;">
+          By leveraging AI, we enable smarter monitoring, faster issue detection, and data-driven
+          decision-making to address lake pollution effectively. From identifying waste accumulation to
+          supporting community-led clean-up initiatives, our platform transforms how we engage with and
+          care for our water bodies.
+        </p>
+        <p class="mb-4" style="font-size:1.05rem; line-height:1.75;">
+          Whether you're a citizen, volunteer, or organization, <strong>Clean Lake Together</strong> empowers
+          you to contribute, collaborate, and create real impact.
+        </p>
+        <div class="d-flex flex-wrap gap-3">
+          <div class="d-flex align-items-center gap-2 text-success fw-semibold">
+            <i class="fas fa-microchip fa-lg"></i><span>Smart Technology</span>
+          </div>
+          <div class="text-muted">·</div>
+          <div class="d-flex align-items-center gap-2 text-primary fw-semibold">
+            <i class="fas fa-users fa-lg"></i><span>Strong Communities</span>
+          </div>
+          <div class="text-muted">·</div>
+          <div class="d-flex align-items-center gap-2 text-info fw-semibold">
+            <i class="fas fa-tint fa-lg"></i><span>Cleaner Lakes</span>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-4 text-center">
+        <div class="rounded-3 p-4 shadow-sm bg-white">
+          <i class="fas fa-water fa-4x text-primary mb-3 d-block"></i>
+          <blockquote class="blockquote mb-0">
+            <p class="fs-5 fw-bold text-success fst-italic mb-0">
+              "Smart technology.<br>Strong communities.<br>Cleaner lakes."
+            </p>
+          </blockquote>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row text-center mb-5">
+  <div class="col-md-4 mb-3">
+    <div class="card border-success shadow-sm h-100">
+      <div class="card-body py-4">
+        <i class="fas fa-calendar-check fa-3x text-success mb-3"></i>
+        <h3 class="fw-bold text-success">{{ upcoming_events.count }}+</h3>
+        <p class="text-muted mb-0">Upcoming Events</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4 mb-3">
+    <div class="card border-primary shadow-sm h-100">
+      <div class="card-body py-4">
+        <i class="fas fa-tint fa-3x text-primary mb-3"></i>
+        <h3 class="fw-bold text-primary">{{ lakes.count }}</h3>
+        <p class="text-muted mb-0">Lakes We Protect</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4 mb-3">
+    <div class="card border-warning shadow-sm h-100">
+      <div class="card-body py-4">
+        <i class="fas fa-users fa-3x text-warning mb-3"></i>
+        <h3 class="fw-bold text-warning">100+</h3>
+        <p class="text-muted mb-0">Volunteers &amp; Growing</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
