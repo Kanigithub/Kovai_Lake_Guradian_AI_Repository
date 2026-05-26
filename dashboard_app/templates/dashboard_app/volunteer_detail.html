@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}{{ vol_user.get_full_name }} — Volunteer Profile{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <h2><i class="fas fa-user text-info me-2"></i>Volunteer Profile</h2>
+  <div class="d-flex gap-2">
+    <a href="{% url 'dashboard_app:award_badge' vol_user.pk %}" class="btn btn-warning btn-sm"><i class="fas fa-medal me-1"></i>Award Badge</a>
+    <a href="{% url 'dashboard_app:toggle_organizer' vol_user.pk %}"
+       class="btn btn-{% if profile.is_organizer %}danger{% else %}success{% endif %} btn-sm"
+       onclick="return confirm('{% if profile.is_organizer %}Revoke organizer access?{% else %}Grant organizer access?{% endif %}')">
+      <i class="fas fa-{% if profile.is_organizer %}user-minus{% else %}user-shield{% endif %} me-1"></i>
+      {% if profile.is_organizer %}Revoke Organizer{% else %}Grant Organizer{% endif %}
+    </a>
+    <a href="{% url 'dashboard_app:volunteer_list' %}" class="btn btn-outline-secondary btn-sm">&larr; Volunteers</a>
+  </div>
+</div>
+<div class="row g-3">
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm text-center p-4">
+      {% if profile.profile_picture %}
+        <img src="{{ profile.profile_picture.url }}" class="rounded-circle mx-auto mb-3" width="100" height="100" style="object-fit:cover;">
+      {% else %}
+        <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center mx-auto mb-3" style="width:100px;height:100px;font-size:2.5rem;">
+          {{ vol_user.first_name|first|upper }}{{ vol_user.last_name|first|upper }}
+        </div>
+      {% endif %}
+      <h5 class="fw-bold">{{ vol_user.get_full_name|default:vol_user.username }}</h5>
+      <p class="text-muted small">@{{ vol_user.username }}</p>
+      {% if profile.is_organizer %}<span class="badge bg-danger mb-2">Organizer</span>{% else %}<span class="badge bg-secondary mb-2">Volunteer</span>{% endif %}
+      <hr>
+      <div class="text-start small">
+        <p><i class="fas fa-envelope me-2 text-muted"></i>{{ vol_user.email }}</p>
+        <p><i class="fas fa-phone me-2 text-muted"></i>{{ profile.phone|default:"Not provided" }}</p>
+        <p><i class="fas fa-star me-2 text-warning"></i>{{ profile.total_points }} points</p>
+        <p><i class="fas fa-clock me-2 text-info"></i>{{ profile.total_hours }} hours logged</p>
+        <p><i class="fas fa-calendar-check me-2 text-success"></i>Joined {{ vol_user.date_joined|date:"M Y" }}</p>
+      </div>
+      {% if profile.bio %}<hr><p class="small text-muted fst-italic">"{{ profile.bio }}"</p>{% endif %}
+    </div>
+  </div>
+  <div class="col-md-8">
+    <div class="card border-0 shadow-sm mb-3 p-3">
+      <h6 class="fw-bold mb-2"><i class="fas fa-tools me-2 text-success"></i>Skills &amp; Availability</h6>
+      <p class="mb-1"><strong>Skills:</strong> {{ profile.skills|default:"Not specified" }}</p>
+      <div class="mt-1">
+        {% if profile.availability_weekdays %}<span class="badge bg-info me-1">Available Weekdays</span>{% endif %}
+        {% if profile.availability_weekends %}<span class="badge bg-primary">Available Weekends</span>{% endif %}
+      </div>
+    </div>
+    <div class="card border-0 shadow-sm mb-3 p-3">
+      <h6 class="fw-bold mb-2"><i class="fas fa-award me-2 text-warning"></i>Badges ({{ vol_badges.count }})</h6>
+      {% if vol_badges %}
+      <div class="d-flex flex-wrap gap-2">
+        {% for vb in vol_badges %}
+        <div class="text-center p-2 border rounded" style="min-width:90px;">
+          <i class="{{ vb.badge.icon }} fa-2x text-warning mb-1 d-block"></i>
+          <small class="fw-semibold">{{ vb.badge.name }}</small><br>
+          <small class="text-muted" style="font-size:.7rem;">{{ vb.awarded_at|date:"M d, Y" }}</small>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-muted small mb-0">No badges awarded yet.</p>
+      {% endif %}
+    </div>
+    <div class="card border-0 shadow-sm p-3">
+      <h6 class="fw-bold mb-2"><i class="fas fa-history me-2 text-primary"></i>Event History ({{ registrations.count }})</h6>
+      {% if registrations %}
+      <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+          <thead class="table-light"><tr><th>Event</th><th>Role</th><th>Date</th><th>Hours</th><th>Status</th></tr></thead>
+          <tbody>
+            {% for reg in registrations %}
+            <tr>
+              <td><a href="{% url 'events_app:event_detail' reg.event.pk %}" class="text-decoration-none">{{ reg.event.title|truncatechars:30 }}</a></td>
+              <td><small>{{ reg.role.name|default:"General" }}</small></td>
+              <td><small>{{ reg.event.date }}</small></td>
+              <td>{{ reg.hours_logged|floatformat:1 }}h</td>
+              <td><span class="badge bg-{% if reg.status == 'attended' %}success{% elif reg.status == 'cancelled' %}danger{% else %}warning text-dark{% endif %}">{{ reg.get_status_display }}</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="text-muted small mb-0">No event history yet.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
