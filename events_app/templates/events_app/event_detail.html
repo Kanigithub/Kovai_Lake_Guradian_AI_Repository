@@ -104,10 +104,59 @@
               <i class="fas fa-check-circle me-1"></i> You're registered!
               {% if user_registration.role %}({{ user_registration.role.name }}){% endif %}
             </div>
+            {% elif user_registration.status == 'attended' %}
+            <div class="alert alert-success py-2 mb-2">
+              <i class="fas fa-check-circle me-1"></i> Event completed.
+              {% if user_registration.role %}({{ user_registration.role.name }}){% endif %}
+            </div>
+            {% elif user_registration.status == 'cancelled' %}
+            <div class="alert alert-secondary py-2 mb-2">
+              Registration cancelled.
+            </div>
+            {% endif %}
 
-            <!-- Check-In / Check-Out -->  
-            {% if user_work_log %}
-              {% if user_work_log.check_out_time %}
+            {% if user_registration.status == 'registered' %}
+              {% if user_work_log %}
+                {% if user_work_log.check_out_time %}
+                  <div class="card border-success mb-2">
+                    <div class="card-body py-2 px-3 text-center">
+                      <p class="mb-1 small fw-semibold text-success"><i class="fas fa-clock me-1"></i>Work Duration Logged</p>
+                      <p class="mb-0 small"><i class="fas fa-sign-in-alt text-success me-1"></i>In: {{ user_work_log.check_in_time|date:"h:i A" }}</p>
+                      <p class="mb-0 small"><i class="fas fa-sign-out-alt text-danger me-1"></i>Out: {{ user_work_log.check_out_time|date:"h:i A" }}</p>
+                      <p class="mt-1 mb-0 fw-bold text-success">Total: {{ user_work_log.duration_display }}</p>
+                    </div>
+                  </div>
+                {% elif user_work_log.check_in_time %}
+                  <div class="alert alert-info py-2 mb-2 small">
+                    <i class="fas fa-sign-in-alt me-1"></i><strong>Checked in</strong> at {{ user_work_log.check_in_time|date:"h:i A" }}
+                  </div>
+                  <form method="post" action="{% url 'events_app:check_out' event.pk %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger btn-sm w-100 mb-2"
+                            onclick="return confirm('Confirm check-out now?')">
+                      <i class="fas fa-sign-out-alt me-1"></i>Check Out
+                    </button>
+                  </form>
+                {% endif %}
+              {% else %}
+                <form method="post" action="{% url 'events_app:check_in' event.pk %}">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-success btn-sm w-100 mb-2"
+                          onclick="return confirm('Confirm check-in now?')">
+                    <i class="fas fa-sign-in-alt me-1"></i>Check In
+                  </button>
+                </form>
+              {% endif %}
+
+              <form method="post" action="{% url 'events_app:event_cancel' event.pk %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-danger btn-sm w-100"
+                        onclick="return confirm('Cancel your registration?')">
+                  Cancel Registration
+                </button>
+              </form>
+            {% elif user_registration.status == 'attended' %}
+              {% if user_work_log and user_work_log.check_out_time %}
                 <div class="card border-success mb-2">
                   <div class="card-body py-2 px-3 text-center">
                     <p class="mb-1 small fw-semibold text-success"><i class="fas fa-clock me-1"></i>Work Duration Logged</p>
@@ -116,36 +165,7 @@
                     <p class="mt-1 mb-0 fw-bold text-success">Total: {{ user_work_log.duration_display }}</p>
                   </div>
                 </div>
-              {% elif user_work_log.check_in_time %}
-                <div class="alert alert-info py-2 mb-2 small">
-                  <i class="fas fa-sign-in-alt me-1"></i><strong>Checked in</strong> at {{ user_work_log.check_in_time|date:"h:i A" }}
-                </div>
-                <button type="button" class="btn btn-danger btn-sm w-100 mb-2"
-                        onclick="openQrScanner('checkout')">
-                  <i class="fas fa-qrcode me-1"></i>Check Out with QR
-                </button>
-              {% else %}
-                <button type="button" class="btn btn-success btn-sm w-100 mb-2"
-                        onclick="openQrScanner('checkin')">
-                  <i class="fas fa-qrcode me-1"></i>Check In with QR
-                </button>
               {% endif %}
-            {% else %}
-              <button type="button" class="btn btn-success btn-sm w-100 mb-2"
-                      onclick="openQrScanner('checkin')">
-                <i class="fas fa-qrcode me-1"></i>Check In with QR
-              </button>
-            {% endif %}
-
-            <form method="post" action="{% url 'events_app:event_cancel' event.pk %}">
-              {% csrf_token %}
-              <button type="submit" class="btn btn-outline-danger btn-sm w-100"
-                      onclick="return confirm('Cancel your registration?')">
-                Cancel Registration
-              </button>
-            </form>
-            {% elif user_registration.status == 'cancelled' %}
-            <div class="alert alert-secondary py-2">Registration cancelled.</div>
             {% endif %}
           {% elif event.status == 'upcoming' and not event.is_full %}
             <a href="{% url 'events_app:event_register' event.pk %}" class="btn btn-success w-100 mt-2">

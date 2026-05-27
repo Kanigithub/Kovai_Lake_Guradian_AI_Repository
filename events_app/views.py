@@ -10,15 +10,22 @@ from .forms import EventForm, EventRoleForm, EventRegistrationForm
 
 
 def event_list(request):
-    status_filter = request.GET.get('status', '')
-    events = Event.objects.select_related('lake')
-    if status_filter:
-        events = events.filter(status=status_filter)
-    else:
-        events = events.order_by('date')
+    tab = request.GET.get('tab', 'registered')
+    upcoming_events = Event.objects.filter(status='upcoming').select_related('lake').order_by('date')
+    completed_events = Event.objects.filter(status='completed').select_related('lake').order_by('-date')
+    registered_events = Event.objects.none()
+
+    if request.user.is_authenticated and not request.user.userprofile.is_organizer:
+        registered_events = Event.objects.filter(
+            registrations__volunteer=request.user
+        ).exclude(registrations__status='cancelled').select_related('lake').distinct().order_by('date')
+        upcoming_events = upcoming_events.exclude(id__in=registered_events.values_list('id', flat=True))
+
     return render(request, 'events_app/event_list.html', {
-        'events': events,
-        'status_filter': status_filter,
+        'registered_events': registered_events,
+        'upcoming_events': upcoming_events,
+        'completed_events': completed_events,
+        'active_tab': tab,
     })
 
 
@@ -53,7 +60,7 @@ def event_register(request, pk):
         return redirect('events_app:event_detail', pk=pk)
     existing = EventRegistration.objects.filter(volunteer=request.user, event=event).first()
     if existing:
-        messages.info(request, 'You are already registered for this event.')
+        messages.info(request, 'You already have a registration for this event and cannot register again.')
         return redirect('events_app:event_detail', pk=pk)
     if request.method == 'POST':
         form = EventRegistrationForm(event, request.POST)
@@ -260,3 +267,7 @@ def _check_and_award_badge(user):
     for badge in Badge.objects.filter(min_points__isnull=False):
         if profile.total_points >= badge.min_points:
             VolunteerBadge.objects.get_or_create(user=user, badge=badge)
+
+
+
+

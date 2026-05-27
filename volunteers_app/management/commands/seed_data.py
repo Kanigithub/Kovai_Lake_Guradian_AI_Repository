@@ -611,6 +611,51 @@ class Command(BaseCommand):
                 'status': 'upcoming',
             },
             {
+                'title': 'Krishnampathi Lake Restoration Day',
+                'description': (
+                    'A community restoration event at Krishnampathi Lake focusing on clearing water hyacinth, '
+                    'planting native reeds, and repairing footpaths. Ideal for volunteers who enjoy hands-on work.'
+                ),
+                'lake': krishnampathi,
+                'location': 'Krishnampathi Lake – Western Bund Entrance',
+                'date': today + timedelta(days=35),
+                'start_time': time(7, 30),
+                'end_time': time(12, 30),
+                'required_materials': 'Gloves, Long sleeves, Water bottle',
+                'max_volunteers': 40,
+                'status': 'upcoming',
+            },
+            {
+                'title': 'Selvachinthamani Eco-Build Day',
+                'description': (
+                    'Join the Selvachinthamani Eco-Build Day to construct trash traps, plant vetiver grass, '
+                    'and set up awareness signs around the lake. Volunteers will learn about urban wetland conservation.'
+                ),
+                'lake': selvachinthamani,
+                'location': 'Selvachinthamani Lake – Canal End',
+                'date': today + timedelta(days=42),
+                'start_time': time(8, 0),
+                'end_time': time(12, 0),
+                'required_materials': 'Work gloves, Hat, Comfortable shoes',
+                'max_volunteers': 35,
+                'status': 'upcoming',
+            },
+            {
+                'title': 'Kumaraswami Lake Community Green Walk',
+                'description': (
+                    'A gentle green walk around Kumaraswami Lake that combines cleanup with a short conservation '
+                    'talk. Perfect for families and volunteers who want a low-impact, high-value experience.'
+                ),
+                'lake': kumaraswami,
+                'location': 'Kumaraswami Lake – South Entrance',
+                'date': today + timedelta(days=50),
+                'start_time': time(8, 30),
+                'end_time': time(11, 30),
+                'required_materials': 'Comfortable shoes, Water bottle, Mask',
+                'max_volunteers': 30,
+                'status': 'upcoming',
+            },
+            {
                 'title': 'Ukkadam Community Awareness March',
                 'description': (
                     'Walk along the Ukkadam Lake bund road and spread awareness about lake conservation '
