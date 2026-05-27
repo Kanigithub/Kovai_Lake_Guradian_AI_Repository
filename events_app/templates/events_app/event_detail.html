@@ -76,7 +76,9 @@
       <div class="card-body text-center p-3">
         <p class="small text-muted mb-1">Event Code</p>
         <p class="fw-bold font-monospace text-success fs-6 mb-3">{{ event.event_code }}</p>
-        <div id="qr-code-canvas" class="d-flex justify-content-center mb-2"></div>
+        <div class="d-flex justify-content-center mb-2">
+          <div id="qr-code-canvas" style="width:200px;height:200px;flex-shrink:0;"></div>
+        </div>
         <p class="text-muted mb-2" style="font-size:0.72rem;">Scan to open this event page</p>
         <button onclick="downloadQR()" class="btn btn-success btn-sm w-100">
           <i class="fas fa-download me-1"></i>Download QR Code (.png)
@@ -118,22 +120,21 @@
                 <div class="alert alert-info py-2 mb-2 small">
                   <i class="fas fa-sign-in-alt me-1"></i><strong>Checked in</strong> at {{ user_work_log.check_in_time|date:"h:i A" }}
                 </div>
-                <form method="post" action="{% url 'events_app:check_out' event.pk %}">
-                  {% csrf_token %}
-                  <button type="submit" class="btn btn-danger btn-sm w-100 mb-2"
-                          onclick="return confirm('Confirm check-out now?')">
-                    <i class="fas fa-sign-out-alt me-1"></i>Check Out
-                  </button>
-                </form>
+                <button type="button" class="btn btn-danger btn-sm w-100 mb-2"
+                        onclick="openQrScanner('checkout')">
+                  <i class="fas fa-qrcode me-1"></i>Check Out with QR
+                </button>
+              {% else %}
+                <button type="button" class="btn btn-success btn-sm w-100 mb-2"
+                        onclick="openQrScanner('checkin')">
+                  <i class="fas fa-qrcode me-1"></i>Check In with QR
+                </button>
               {% endif %}
             {% else %}
-              <form method="post" action="{% url 'events_app:check_in' event.pk %}">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-success btn-sm w-100 mb-2"
-                        onclick="return confirm('Confirm check-in now?')">
-                  <i class="fas fa-sign-in-alt me-1"></i>Check In
-                </button>
-              </form>
+              <button type="button" class="btn btn-success btn-sm w-100 mb-2"
+                      onclick="openQrScanner('checkin')">
+                <i class="fas fa-qrcode me-1"></i>Check In with QR
+              </button>
             {% endif %}
 
             <form method="post" action="{% url 'events_app:event_cancel' event.pk %}">
@@ -206,6 +207,46 @@
   <i class="fas fa-arrow-left me-1"></i>Back to Events
 </a>
 
+<!-- QR Scanner Modal -->
+<div class="modal fade" id="qrScannerModal" tabindex="-1" aria-labelledby="qrScannerLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header" style="background:#1b5e20;">
+        <h5 class="modal-title text-white fw-bold" id="qrScannerLabel">
+          <i class="fas fa-qrcode me-2"></i><span id="qrScannerTitle">Scan QR Code</span>
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Camera permission denied -->
+        <div id="cameraPermissionError" class="alert alert-danger d-none">
+          <i class="fas fa-exclamation-triangle me-2"></i>
+          <strong>Camera access denied.</strong> Please allow camera permissions in your browser settings and try again.
+        </div>
+        <!-- Scanner viewport -->
+        <div id="qr-reader" style="width:100%;border-radius:8px;overflow:hidden;"></div>
+        <!-- Hint text -->
+        <div id="qrScanning" class="text-center text-muted small mt-2">
+          <i class="fas fa-camera me-1"></i>Point the camera at the event QR code.
+        </div>
+        <!-- Result messages -->
+        <div id="qrScanSuccess" class="alert alert-success mt-3 d-none">
+          <i class="fas fa-check-circle me-2"></i><span id="qrSuccessMsg"></span>
+        </div>
+        <div id="qrScanError" class="alert alert-danger mt-3 d-none">
+          <i class="fas fa-times-circle me-2"></i><span id="qrErrorMsg"></span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="qrCloseBtn" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-success d-none" id="qrReloadBtn" onclick="location.reload()">
+          <i class="fas fa-sync me-1"></i>Refresh Page
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 {% if user.is_authenticated and user.userprofile.is_organizer %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
@@ -214,33 +255,176 @@
     var eventCode = '{{ event.event_code }}';
     var qrContent = eventUrl + '?code=' + eventCode;
 
+    var qrSize = 200;
     new QRCode(document.getElementById('qr-code-canvas'), {
       text: qrContent,
-      width: 176,
-      height: 176,
+      width: qrSize,
+      height: qrSize,
       colorDark: '#1b5e20',
       colorLight: '#ffffff',
       correctLevel: QRCode.CorrectLevel.H
     });
 
-    window.downloadQR = function () {
+    // qrcodejs renders both a <canvas> and an <img> — keep only the canvas
+    setTimeout(function () {
       var canvas = document.querySelector('#qr-code-canvas canvas');
+      var img    = document.querySelector('#qr-code-canvas img');
       if (canvas) {
-        var link = document.createElement('a');
-        link.download = 'event-' + eventCode + '-qr.png';
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-      } else {
-        var img = document.querySelector('#qr-code-canvas img');
-        if (img) {
-          var link = document.createElement('a');
-          link.download = 'event-' + eventCode + '-qr.png';
-          link.href = img.src;
-          link.click();
-        }
+        canvas.style.width  = qrSize + 'px';
+        canvas.style.height = qrSize + 'px';
+        canvas.style.display = 'block';
       }
+      if (img) { img.style.display = 'none'; }
+    }, 100);
+
+    window.downloadQR = function () {
+      // Render a clean 512×512 hi-res PNG with white quiet-zone padding
+      var exportSize = 512;
+      var padding    = 40;   // white quiet zone on each side
+      var qrArea     = exportSize - padding * 2;
+
+      var srcCanvas = document.querySelector('#qr-code-canvas canvas');
+      var offscreen = document.createElement('canvas');
+      offscreen.width  = exportSize;
+      offscreen.height = exportSize;
+      var ctx = offscreen.getContext('2d');
+
+      // White background
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, exportSize, exportSize);
+
+      if (srcCanvas) {
+        ctx.drawImage(srcCanvas, padding, padding, qrArea, qrArea);
+      } else {
+        // Fallback: draw the img element
+        var img = document.querySelector('#qr-code-canvas img');
+        if (img) { ctx.drawImage(img, padding, padding, qrArea, qrArea); }
+      }
+
+      var link = document.createElement('a');
+      link.download = 'event-' + eventCode + '-qr.png';
+      link.href = offscreen.toDataURL('image/png');
+      link.click();
     };
   })();
+</script>
+{% endif %}
+
+{% if user.is_authenticated %}
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script>
+(function () {
+  var currentAction = null;   // 'checkin' or 'checkout'
+  var html5QrCode = null;
+  var scanLocked = false;
+
+  var checkinUrl  = '{% url "events_app:checkin_qr"  event.pk %}';
+  var checkoutUrl = '{% url "events_app:checkout_qr" event.pk %}';
+  var csrfToken   = '{{ csrf_token }}';
+
+  function resetModalState() {
+    document.getElementById('qrScanSuccess').classList.add('d-none');
+    document.getElementById('qrScanError').classList.add('d-none');
+    document.getElementById('qrScanning').classList.remove('d-none');
+    document.getElementById('cameraPermissionError').classList.add('d-none');
+    document.getElementById('qrReloadBtn').classList.add('d-none');
+    document.getElementById('qrCloseBtn').textContent = 'Close';
+    scanLocked = false;
+  }
+
+  function showSuccess(msg) {
+    document.getElementById('qrScanning').classList.add('d-none');
+    var el = document.getElementById('qrScanSuccess');
+    document.getElementById('qrSuccessMsg').textContent = msg;
+    el.classList.remove('d-none');
+    document.getElementById('qrReloadBtn').classList.remove('d-none');
+    document.getElementById('qrCloseBtn').textContent = 'Close';
+  }
+
+  function showError(msg) {
+    document.getElementById('qrScanning').classList.remove('d-none');
+    var el = document.getElementById('qrScanError');
+    document.getElementById('qrErrorMsg').textContent = msg;
+    el.classList.remove('d-none');
+  }
+
+  function stopScanner() {
+    if (html5QrCode) {
+      html5QrCode.stop().catch(function () {});
+    }
+  }
+
+  function onScanSuccess(decodedText) {
+    if (scanLocked) return;
+    scanLocked = true;
+
+    stopScanner();
+
+    var url = currentAction === 'checkin' ? checkinUrl : checkoutUrl;
+    fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrfToken
+      },
+      body: JSON.stringify({ qr_data: decodedText })
+    })
+    .then(function (resp) { return resp.json(); })
+    .then(function (data) {
+      if (data.success) {
+        showSuccess(data.message);
+      } else {
+        showError(data.error || 'An error occurred. Please try again.');
+        // Allow retry after a short delay
+        setTimeout(function () {
+          scanLocked = false;
+          startScanner();
+          document.getElementById('qrScanError').classList.add('d-none');
+        }, 2500);
+      }
+    })
+    .catch(function () {
+      showError('Network error. Please check your connection and try again.');
+      scanLocked = false;
+    });
+  }
+
+  function startScanner() {
+    html5QrCode = new Html5Qrcode('qr-reader');
+    html5QrCode.start(
+      { facingMode: 'environment' },
+      { fps: 10, qrbox: { width: 250, height: 250 } },
+      onScanSuccess
+    ).catch(function (err) {
+      var msg = (err && err.toString()) || '';
+      if (msg.toLowerCase().includes('permission') || msg.toLowerCase().includes('denied') || msg.toLowerCase().includes('notallowed')) {
+        document.getElementById('cameraPermissionError').classList.remove('d-none');
+        document.getElementById('qrScanning').classList.add('d-none');
+      } else {
+        showError('Unable to start camera: ' + msg);
+      }
+    });
+  }
+
+  window.openQrScanner = function (action) {
+    currentAction = action;
+    resetModalState();
+
+    var title = action === 'checkin' ? 'Scan QR to Check In' : 'Scan QR to Check Out';
+    document.getElementById('qrScannerTitle').textContent = title;
+
+    var modal = new bootstrap.Modal(document.getElementById('qrScannerModal'));
+    document.getElementById('qrScannerModal').addEventListener('shown.bs.modal', function handler() {
+      document.getElementById('qrScannerModal').removeEventListener('shown.bs.modal', handler);
+      startScanner();
+    });
+    document.getElementById('qrScannerModal').addEventListener('hide.bs.modal', function handler() {
+      document.getElementById('qrScannerModal').removeEventListener('hide.bs.modal', handler);
+      stopScanner();
+    });
+    modal.show();
+  };
+})();
 </script>
 {% endif %}
 {% endblock %}

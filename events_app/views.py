@@ -2,6 +2,9 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.utils import timezone
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
+import json
 from .models import Event, EventRegistration, EventRole, WorkLog
 from .forms import EventForm, EventRoleForm, EventRegistrationForm
 
@@ -139,7 +142,7 @@ def check_in(request, pk):
     else:
         work_log.check_in_time = timezone.now()
         work_log.save()
-        messages.success(request, f'Check-in recorded at {work_log.check_in_time.strftime("%I:%M %p")}.')
+        messages.success(request, f'Check-in recorded at {timezone.localtime(work_log.check_in_time).strftime("%I:%M %p")}.')
     return redirect('events_app:event_detail', pk=pk)
 
 
@@ -162,6 +165,78 @@ def check_out(request, pk):
         reg.save()
         messages.success(request, f'Check-out recorded. Total duration: {work_log.duration_display()}.')
     return redirect('events_app:event_detail', pk=pk)
+
+
+@login_required
+@require_POST
+def checkin_qr(request, pk):
+    event = get_object_or_404(Event, pk=pk)
+    try:
+        body = json.loads(request.body)
+        qr_data = body.get('qr_data', '')
+    except (json.JSONDecodeError, AttributeError):
+        return JsonResponse({'success': False, 'error': 'Invalid request data.'}, status=400)
+
+    # Validate QR code contains this event's unique code
+    if not qr_data or event.event_code not in qr_data:
+        return JsonResponse({'success': False, 'error': 'This QR code does not belong to this event.'})
+
+    reg = EventRegistration.objects.filter(
+        volunteer=request.user, event=event, status='registered'
+    ).first()
+    if not reg:
+        return JsonResponse({'success': False, 'error': 'You are not registered for this event or your registration is cancelled.'})
+
+    work_log, _ = WorkLog.objects.get_or_create(registration=reg)
+    if work_log.check_in_time:
+        return JsonResponse({'success': False, 'error': 'You have already checked in for this event.'})
+
+    work_log.check_in_time = timezone.now()
+    work_log.save()
+    local_in = timezone.localtime(work_log.check_in_time)
+    return JsonResponse({
+        'success': True,
+        'message': f'Checked in successfully at {local_in.strftime("%I:%M %p")}.'
+    })
+
+
+@login_required
+@require_POST
+def checkout_qr(request, pk):
+    event = get_object_or_404(Event, pk=pk)
+    try:
+        body = json.loads(request.body)
+        qr_data = body.get('qr_data', '')
+    except (json.JSONDecodeError, AttributeError):
+        return JsonResponse({'success': False, 'error': 'Invalid request data.'}, status=400)
+
+    # Validate QR code contains this event's unique code
+    if not qr_data or event.event_code not in qr_data:
+        return JsonResponse({'success': False, 'error': 'This QR code does not belong to this event.'})
+
+    reg = EventRegistration.objects.filter(
+        volunteer=request.user, event=event, status='registered'
+    ).first()
+    if not reg:
+        return JsonResponse({'success': False, 'error': 'You are not registered or already marked as attended/cancelled.'})
+
+    work_log = WorkLog.objects.filter(registration=reg).first()
+    if not work_log or not work_log.check_in_time:
+        return JsonResponse({'success': False, 'error': 'You must check in before you can check out.'})
+    if work_log.check_out_time:
+        return JsonResponse({'success': False, 'error': 'You have already checked out from this event.'})
+
+    work_log.check_out_time = timezone.now()
+    delta = work_log.check_out_time - work_log.check_in_time
+    work_log.duration_minutes = max(1, int(delta.total_seconds() / 60))
+    work_log.save()
+    reg.hours_logged = round(work_log.duration_minutes / 60, 2)
+    reg.status = 'attended'
+    reg.save()
+    return JsonResponse({
+        'success': True,
+        'message': f'Checked out successfully. Total duration: {work_log.duration_display()}.'
+    })
 
 
 def _check_and_award_badge(user):

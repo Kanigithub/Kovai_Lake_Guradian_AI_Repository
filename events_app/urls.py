@@ -13,4 +13,6 @@ urlpatterns = [
     path('<int:pk>/cancel/', views.event_cancel_registration, name='event_cancel'),
     path('<int:pk>/checkin/', views.check_in, name='check_in'),
     path('<int:pk>/checkout/', views.check_out, name='check_out'),
+    path('<int:pk>/checkin-qr/', views.checkin_qr, name='checkin_qr'),
+    path('<int:pk>/checkout-qr/', views.checkout_qr, name='checkout_qr'),
 ]
