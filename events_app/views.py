@@ -14,17 +14,32 @@ def event_list(request):
     upcoming_events = Event.objects.filter(status='upcoming').select_related('lake').order_by('date')
     completed_events = Event.objects.filter(status='completed').select_related('lake').order_by('-date')
     registered_events = Event.objects.none()
+    volunteer_attended_events = Event.objects.none()
 
     if request.user.is_authenticated and not request.user.userprofile.is_organizer:
+        # Events the volunteer has actively registered for (not yet attended / not cancelled)
         registered_events = Event.objects.filter(
-            registrations__volunteer=request.user
-        ).exclude(registrations__status='cancelled').select_related('lake').distinct().order_by('date')
-        upcoming_events = upcoming_events.exclude(id__in=registered_events.values_list('id', flat=True))
+            registrations__volunteer=request.user,
+            registrations__status='registered',
+            status='upcoming'
+        ).select_related('lake').distinct().order_by('date')
+
+        # Events the volunteer has checked out of (registration status = 'attended')
+        volunteer_attended_events = Event.objects.filter(
+            registrations__volunteer=request.user,
+            registrations__status='attended'
+        ).select_related('lake').distinct().order_by('-date')
+
+        # Exclude both registered and personally-attended events from the general upcoming list
+        exclude_ids = list(registered_events.values_list('id', flat=True)) + \
+                      list(volunteer_attended_events.values_list('id', flat=True))
+        upcoming_events = upcoming_events.exclude(id__in=exclude_ids)
 
     return render(request, 'events_app/event_list.html', {
         'registered_events': registered_events,
         'upcoming_events': upcoming_events,
         'completed_events': completed_events,
+        'volunteer_attended_events': volunteer_attended_events,
         'active_tab': tab,
     })
 
@@ -188,14 +203,17 @@ def checkin_qr(request, pk):
     if not qr_data or event.event_code not in qr_data:
         return JsonResponse({'success': False, 'error': 'This QR code does not belong to this event.'})
 
-    reg = EventRegistration.objects.filter(
-        volunteer=request.user, event=event, status='registered'
-    ).first()
+    # Look up registration regardless of status to give precise errors
+    reg = EventRegistration.objects.filter(volunteer=request.user, event=event).first()
     if not reg:
-        return JsonResponse({'success': False, 'error': 'You are not registered for this event or your registration is cancelled.'})
+        return JsonResponse({'success': False, 'error': 'You are not registered for this event.'})
+    if reg.status == 'cancelled':
+        return JsonResponse({'success': False, 'error': 'Your registration has been cancelled. Please re-register to participate.'})
 
     work_log, _ = WorkLog.objects.get_or_create(registration=reg)
     if work_log.check_in_time:
+        if work_log.check_out_time:
+            return JsonResponse({'success': False, 'error': 'You have already checked in and checked out for this event.'})
         return JsonResponse({'success': False, 'error': 'You have already checked in for this event.'})
 
     work_log.check_in_time = timezone.now()
@@ -203,7 +221,9 @@ def checkin_qr(request, pk):
     local_in = timezone.localtime(work_log.check_in_time)
     return JsonResponse({
         'success': True,
-        'message': f'Checked in successfully at {local_in.strftime("%I:%M %p")}.'
+        'message': f'Checked in successfully at {local_in.strftime("%I:%M %p")}.',
+        'action': 'checkin',
+        'check_in_time': local_in.strftime('%I:%M %p'),
     })
 
 
@@ -221,11 +241,12 @@ def checkout_qr(request, pk):
     if not qr_data or event.event_code not in qr_data:
         return JsonResponse({'success': False, 'error': 'This QR code does not belong to this event.'})
 
-    reg = EventRegistration.objects.filter(
-        volunteer=request.user, event=event, status='registered'
-    ).first()
+    # Look up registration regardless of status so we can give precise errors
+    reg = EventRegistration.objects.filter(volunteer=request.user, event=event).first()
     if not reg:
-        return JsonResponse({'success': False, 'error': 'You are not registered or already marked as attended/cancelled.'})
+        return JsonResponse({'success': False, 'error': 'You are not registered for this event.'})
+    if reg.status == 'cancelled':
+        return JsonResponse({'success': False, 'error': 'Your registration has been cancelled.'})
 
     work_log = WorkLog.objects.filter(registration=reg).first()
     if not work_log or not work_log.check_in_time:
@@ -240,9 +261,15 @@ def checkout_qr(request, pk):
     reg.hours_logged = round(work_log.duration_minutes / 60, 2)
     reg.status = 'attended'
     reg.save()
+    local_out = timezone.localtime(work_log.check_out_time)
+    local_in  = timezone.localtime(work_log.check_in_time)
     return JsonResponse({
         'success': True,
-        'message': f'Checked out successfully. Total duration: {work_log.duration_display()}.'
+        'message': f'Checked out successfully. Total duration: {work_log.duration_display()}.',
+        'action': 'checkout',
+        'check_in_time': local_in.strftime('%I:%M %p'),
+        'check_out_time': local_out.strftime('%I:%M %p'),
+        'duration': work_log.duration_display(),
     })
 
 

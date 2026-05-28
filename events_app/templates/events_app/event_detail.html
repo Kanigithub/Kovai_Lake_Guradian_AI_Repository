@@ -130,22 +130,16 @@
                   <div class="alert alert-info py-2 mb-2 small">
                     <i class="fas fa-sign-in-alt me-1"></i><strong>Checked in</strong> at {{ user_work_log.check_in_time|date:"h:i A" }}
                   </div>
-                  <form method="post" action="{% url 'events_app:check_out' event.pk %}">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-danger btn-sm w-100 mb-2"
-                            onclick="return confirm('Confirm check-out now?')">
-                      <i class="fas fa-sign-out-alt me-1"></i>Check Out
-                    </button>
-                  </form>
+                  <button type="button" class="btn btn-danger btn-sm w-100 mb-2"
+                          onclick="openQrScanner('checkout')">
+                    <i class="fas fa-qrcode me-1"></i>Check Out (Scan QR)
+                  </button>
                 {% endif %}
               {% else %}
-                <form method="post" action="{% url 'events_app:check_in' event.pk %}">
-                  {% csrf_token %}
-                  <button type="submit" class="btn btn-success btn-sm w-100 mb-2"
-                          onclick="return confirm('Confirm check-in now?')">
-                    <i class="fas fa-sign-in-alt me-1"></i>Check In
-                  </button>
-                </form>
+                <button type="button" class="btn btn-success btn-sm w-100 mb-2"
+                        onclick="openQrScanner('checkin')">
+                  <i class="fas fa-qrcode me-1"></i>Check In (Scan QR)
+                </button>
               {% endif %}
 
               <form method="post" action="{% url 'events_app:event_cancel' event.pk %}">
@@ -260,7 +254,7 @@
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" id="qrCloseBtn" data-bs-dismiss="modal">Close</button>
         <button type="button" class="btn btn-success d-none" id="qrReloadBtn" onclick="location.reload()">
-          <i class="fas fa-sync me-1"></i>Refresh Page
+          <i class="fas fa-sync me-1"></i>Refresh Now
         </button>
       </div>
     </div>
@@ -337,6 +331,7 @@
   var currentAction = null;   // 'checkin' or 'checkout'
   var html5QrCode = null;
   var scanLocked = false;
+  var reloadTimer = null;
 
   var checkinUrl  = '{% url "events_app:checkin_qr"  event.pk %}';
   var checkoutUrl = '{% url "events_app:checkout_qr" event.pk %}';
@@ -350,35 +345,52 @@
     document.getElementById('qrReloadBtn').classList.add('d-none');
     document.getElementById('qrCloseBtn').textContent = 'Close';
     scanLocked = false;
+    if (reloadTimer) { clearTimeout(reloadTimer); reloadTimer = null; }
   }
 
-  function showSuccess(msg) {
+  function showSuccess(data) {
+    stopScanner();
     document.getElementById('qrScanning').classList.add('d-none');
-    var el = document.getElementById('qrScanSuccess');
-    document.getElementById('qrSuccessMsg').textContent = msg;
-    el.classList.remove('d-none');
-    document.getElementById('qrReloadBtn').classList.remove('d-none');
+    document.getElementById('qrScanError').classList.add('d-none');
+
+    var msgEl = document.getElementById('qrSuccessMsg');
+    var html = '<strong>' + (data.message || 'Success!') + '</strong>';
+    if (data.action === 'checkin') {
+      html += '<br><small class="text-muted">Page will refresh automatically in 2 seconds…</small>';
+    } else if (data.action === 'checkout') {
+      html += '<br><small>Check-in: ' + (data.check_in_time || '') + ' &nbsp;·&nbsp; Check-out: ' + (data.check_out_time || '') + '</small>';
+      html += '<br><small class="text-muted">Page will refresh automatically in 2 seconds…</small>';
+    }
+    msgEl.innerHTML = html;
+    document.getElementById('qrScanSuccess').classList.remove('d-none');
     document.getElementById('qrCloseBtn').textContent = 'Close';
+
+    // Auto-reload after 2 seconds so the button state updates
+    reloadTimer = setTimeout(function () { location.reload(); }, 2000);
   }
 
   function showError(msg) {
-    document.getElementById('qrScanning').classList.remove('d-none');
-    var el = document.getElementById('qrScanError');
+    document.getElementById('qrScanError').classList.remove('d-none');
     document.getElementById('qrErrorMsg').textContent = msg;
-    el.classList.remove('d-none');
+    // Keep qrScanning hint visible so user knows scanner is still active
+    document.getElementById('qrScanning').classList.remove('d-none');
+  }
+
+  function hideError() {
+    document.getElementById('qrScanError').classList.add('d-none');
   }
 
   function stopScanner() {
     if (html5QrCode) {
       html5QrCode.stop().catch(function () {});
+      html5QrCode = null;
     }
   }
 
   function onScanSuccess(decodedText) {
     if (scanLocked) return;
     scanLocked = true;
-
-    stopScanner();
+    hideError();
 
     var url = currentAction === 'checkin' ? checkinUrl : checkoutUrl;
     fetch(url, {
@@ -392,32 +404,49 @@
     .then(function (resp) { return resp.json(); })
     .then(function (data) {
       if (data.success) {
-        showSuccess(data.message);
+        showSuccess(data);
       } else {
-        showError(data.error || 'An error occurred. Please try again.');
-        // Allow retry after a short delay
-        setTimeout(function () {
+        var errMsg = data.error || 'An error occurred. Please try again.';
+        showError(errMsg);
+        // Allow retry after 2.5 seconds — restart scanner only for recoverable errors
+        var permanent = errMsg.indexOf('already') !== -1 ||
+                        errMsg.indexOf('cancelled') !== -1 ||
+                        errMsg.indexOf('not registered') !== -1;
+        if (permanent) {
+          // Don't restart — the action cannot succeed, keep error visible
           scanLocked = false;
-          startScanner();
-          document.getElementById('qrScanError').classList.add('d-none');
-        }, 2500);
+        } else {
+          setTimeout(function () {
+            scanLocked = false;
+            hideError();
+            startScanner();
+          }, 2500);
+        }
       }
     })
     .catch(function () {
       showError('Network error. Please check your connection and try again.');
-      scanLocked = false;
+      setTimeout(function () {
+        scanLocked = false;
+        hideError();
+        startScanner();
+      }, 2500);
     });
   }
 
   function startScanner() {
+    if (html5QrCode) { return; }  // already running
     html5QrCode = new Html5Qrcode('qr-reader');
     html5QrCode.start(
       { facingMode: 'environment' },
       { fps: 10, qrbox: { width: 250, height: 250 } },
       onScanSuccess
     ).catch(function (err) {
+      html5QrCode = null;
       var msg = (err && err.toString()) || '';
-      if (msg.toLowerCase().includes('permission') || msg.toLowerCase().includes('denied') || msg.toLowerCase().includes('notallowed')) {
+      if (msg.toLowerCase().includes('permission') ||
+          msg.toLowerCase().includes('denied') ||
+          msg.toLowerCase().includes('notallowed')) {
         document.getElementById('cameraPermissionError').classList.remove('d-none');
         document.getElementById('qrScanning').classList.add('d-none');
       } else {
@@ -430,18 +459,22 @@
     currentAction = action;
     resetModalState();
 
-    var title = action === 'checkin' ? 'Scan QR to Check In' : 'Scan QR to Check Out';
+    var title = action === 'checkin' ? 'Scan QR Code to Check In' : 'Scan QR Code to Check Out';
     document.getElementById('qrScannerTitle').textContent = title;
 
-    var modal = new bootstrap.Modal(document.getElementById('qrScannerModal'));
-    document.getElementById('qrScannerModal').addEventListener('shown.bs.modal', function handler() {
-      document.getElementById('qrScannerModal').removeEventListener('shown.bs.modal', handler);
+    var modalEl = document.getElementById('qrScannerModal');
+    var modal = new bootstrap.Modal(modalEl);
+
+    modalEl.addEventListener('shown.bs.modal', function handler() {
+      modalEl.removeEventListener('shown.bs.modal', handler);
       startScanner();
     });
-    document.getElementById('qrScannerModal').addEventListener('hide.bs.modal', function handler() {
-      document.getElementById('qrScannerModal').removeEventListener('hide.bs.modal', handler);
+    modalEl.addEventListener('hide.bs.modal', function handler() {
+      modalEl.removeEventListener('hide.bs.modal', handler);
       stopScanner();
+      if (reloadTimer) { clearTimeout(reloadTimer); reloadTimer = null; }
     });
+
     modal.show();
   };
 })();
